@@ -1,1 +1,1 @@
-# ichat
+Simple chat app for ibartender
