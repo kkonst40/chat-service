@@ -6,16 +6,25 @@ import (
 	"github.com/kkonst40/ichat/internal/repositories"
 )
 
-type MesssageService struct {
-	MessageRepository repositories.MessageRepository
+type MessageService struct {
+	messageRepository repositories.MessageRepository
 }
 
-func (s *MesssageService) GetMessage(id uuid.UUID) (*models.Message, error) {
-	message, err := s.MessageRepository.GetMessage(id)
+func NewMessageService() *MessageService {
+	repo := repositories.NewInMemoryMessageRepository()
+	service := MessageService{
+		messageRepository: repo,
+	}
+
+	return &service
+}
+
+func (s *MessageService) GetMessage(id uuid.UUID) (*models.Message, error) {
+	message, err := s.messageRepository.GetMessage(id)
 	return message, err
 }
 
-func (s *MesssageService) CreateMessage(userID, chatID uuid.UUID, text string) error {
+func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) error {
 	newId, err := uuid.NewV7()
 	if err != nil {
 		return err
@@ -28,11 +37,11 @@ func (s *MesssageService) CreateMessage(userID, chatID uuid.UUID, text string) e
 		Text:   text,
 	}
 
-	err = s.MessageRepository.CreateMessage(message)
+	err = s.messageRepository.CreateMessage(message)
 	return err
 }
 
-func (s *MesssageService) UpdateMessage(id, userID, chatID uuid.UUID, text string) error {
+func (s *MessageService) UpdateMessage(id, userID, chatID uuid.UUID, text string) error {
 	message := &models.Message{
 		ID:     id,
 		UserID: userID,
@@ -40,11 +49,11 @@ func (s *MesssageService) UpdateMessage(id, userID, chatID uuid.UUID, text strin
 		Text:   text,
 	}
 
-	err := s.MessageRepository.UpdateMessage(message)
+	err := s.messageRepository.UpdateMessage(message)
 	return err
 }
 
-func (s *MesssageService) DeleteMessage(id uuid.UUID) error {
-	err := s.MessageRepository.DeleteMessage(id)
+func (s *MessageService) DeleteMessage(id uuid.UUID) error {
+	err := s.messageRepository.DeleteMessage(id)
 	return err
 }

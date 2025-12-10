@@ -15,11 +15,19 @@ type MessageRepository interface {
 }
 
 type InMemoryMessageRepository struct {
-	Messages map[uuid.UUID]*models.Message
+	messages map[uuid.UUID]*models.Message
+}
+
+func NewInMemoryMessageRepository() *InMemoryMessageRepository {
+	repo := InMemoryMessageRepository{
+		messages: map[uuid.UUID]*models.Message{},
+	}
+
+	return &repo
 }
 
 func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*models.Message, error) {
-	message, ok := r.Messages[id]
+	message, ok := r.messages[id]
 	if !ok {
 		return nil, errors.New("message with ID {} does not exist")
 	}
@@ -27,22 +35,22 @@ func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*models.Message, e
 }
 
 func (r *InMemoryMessageRepository) CreateMessage(m *models.Message) error {
-	if _, ok := r.Messages[m.ID]; ok {
+	if _, ok := r.messages[m.ID]; ok {
 		return errors.New("message with ID {} already exists")
 	}
-	r.Messages[m.ID] = m
+	r.messages[m.ID] = m
 	return nil
 }
 
 func (r *InMemoryMessageRepository) UpdateMessage(m *models.Message) error {
-	if _, ok := r.Messages[m.ID]; !ok {
+	if _, ok := r.messages[m.ID]; !ok {
 		return errors.New("message with ID {} does not exists")
 	}
-	r.Messages[m.ID] = m
+	r.messages[m.ID] = m
 	return nil
 }
 
 func (r *InMemoryMessageRepository) DeleteMessage(id uuid.UUID) error {
-	delete(r.Messages, id)
+	delete(r.messages, id)
 	return nil
 }

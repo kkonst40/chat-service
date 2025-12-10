@@ -7,11 +7,20 @@ import (
 )
 
 type ChatService struct {
-	ChatRepository repositories.ChatRepository
+	chatRepository repositories.ChatRepository
+}
+
+func NewChatService() *ChatService {
+	repo := repositories.NewInMemoryChatRepository()
+	service := ChatService{
+		chatRepository: repo,
+	}
+
+	return &service
 }
 
 func (s *ChatService) GetChat(id uuid.UUID) (*models.Chat, error) {
-	chat, err := s.ChatRepository.GetChat(id)
+	chat, err := s.chatRepository.GetChat(id)
 	return chat, err
 }
 
@@ -26,16 +35,16 @@ func (s *ChatService) CreateChat(userIds []uuid.UUID) error {
 		UserIDs: userIds,
 	}
 
-	err = s.ChatRepository.CreateChat(chat)
+	err = s.chatRepository.CreateChat(chat)
 	return err
 }
 
 func (s *ChatService) AddChatUser(id, userId uuid.UUID) error {
-	err := s.ChatRepository.AddChatUser(id, userId)
+	err := s.chatRepository.AddChatUser(id, userId)
 	return err
 }
 
 func (s *ChatService) DeleteChat(id uuid.UUID) error {
-	err := s.ChatRepository.DeleteChat(id)
+	err := s.chatRepository.DeleteChat(id)
 	return err
 }

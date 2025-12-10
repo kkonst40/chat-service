@@ -15,11 +15,19 @@ type ChatRepository interface {
 }
 
 type InMemoryChatRepository struct {
-	Chats map[uuid.UUID]*models.Chat
+	chats map[uuid.UUID]*models.Chat
+}
+
+func NewInMemoryChatRepository() *InMemoryChatRepository {
+	repo := InMemoryChatRepository{
+		chats: map[uuid.UUID]*models.Chat{},
+	}
+
+	return &repo
 }
 
 func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
-	chat, ok := r.Chats[id]
+	chat, ok := r.chats[id]
 	if !ok {
 		return nil, errors.New("chat with ID {} does not exist")
 	}
@@ -27,19 +35,19 @@ func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
 }
 
 func (r *InMemoryChatRepository) CreateChat(c *models.Chat) error {
-	if _, ok := r.Chats[c.ID]; ok {
+	if _, ok := r.chats[c.ID]; ok {
 		return errors.New("chat with ID {} already exists")
 	}
-	r.Chats[c.ID] = c
+	r.chats[c.ID] = c
 	return nil
 }
 
 func (r *InMemoryChatRepository) AddChatUser(id uuid.UUID, userId uuid.UUID) error {
-	r.Chats[id].UserIDs = append(r.Chats[id].UserIDs, userId)
+	r.chats[id].UserIDs = append(r.chats[id].UserIDs, userId)
 	return nil
 }
 
 func (r *InMemoryChatRepository) DeleteChat(id uuid.UUID) error {
-	delete(r.Chats, id)
+	delete(r.chats, id)
 	return nil
 }
