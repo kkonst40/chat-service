@@ -24,18 +24,29 @@ func (s *ChatService) GetChat(id uuid.UUID) (*models.Chat, error) {
 	return chat, err
 }
 
-func (s *ChatService) CreateChat(userIds []uuid.UUID) error {
+func (s *ChatService) GetChats() ([]models.Chat, error) {
+	chats, err := s.chatRepository.GetChats()
+	return chats, err
+}
+
+func (s *ChatService) CreateChat(name string, userIds []uuid.UUID) (*models.Chat, error) {
 	newId, err := uuid.NewV7()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	chat := &models.Chat{
 		ID:      newId,
+		Name:    name,
 		UserIDs: userIds,
 	}
 
 	err = s.chatRepository.CreateChat(chat)
+	return chat, err
+}
+
+func (s *ChatService) UpdateChatName(id uuid.UUID, name string) error {
+	err := s.chatRepository.UpdateChatName(id, name)
 	return err
 }
 

@@ -9,7 +9,9 @@ import (
 
 type ChatRepository interface {
 	GetChat(id uuid.UUID) (*models.Chat, error)
+	GetChats() ([]models.Chat, error)
 	CreateChat(c *models.Chat) error
+	UpdateChatName(id uuid.UUID, name string) error
 	AddChatUser(id, userId uuid.UUID) error
 	DeleteChat(id uuid.UUID) error
 }
@@ -34,11 +36,24 @@ func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
 	return chat, nil
 }
 
+func (r *InMemoryChatRepository) GetChats() ([]models.Chat, error) {
+	result := make([]models.Chat, 0, len(r.chats))
+	for _, v := range r.chats {
+		result = append(result, *v)
+	}
+	return result, nil
+}
+
 func (r *InMemoryChatRepository) CreateChat(c *models.Chat) error {
 	if _, ok := r.chats[c.ID]; ok {
 		return errors.New("chat with ID {} already exists")
 	}
 	r.chats[c.ID] = c
+	return nil
+}
+
+func (r *InMemoryChatRepository) UpdateChatName(id uuid.UUID, name string) error {
+	r.chats[id].Name = name
 	return nil
 }
 
