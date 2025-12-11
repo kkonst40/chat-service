@@ -17,9 +17,6 @@ func NewChatService(newChatRepository repositories.ChatRepository) *ChatService 
 		chatRepository: newChatRepository,
 	}
 
-	log.Println(service)
-	log.Println(&service)
-
 	return &service
 }
 

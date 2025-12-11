@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"errors"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/domain/models"
@@ -25,9 +24,6 @@ func NewInMemoryChatRepository() *InMemoryChatRepository {
 	repo := InMemoryChatRepository{
 		chats: map[uuid.UUID]*models.Chat{},
 	}
-
-	log.Println(repo)
-	log.Println(&repo)
 
 	return &repo
 }
