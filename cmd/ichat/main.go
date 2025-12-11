@@ -8,29 +8,43 @@ import (
 )
 
 func main() {
-	gin.SetMode(gin.ReleaseMode)
-	chatHandler, messageHandler := initHandlers()
-
-	router := gin.Default()
-	router.GET("/chats", chatHandler.GetChats())
-	router.POST("/chats", chatHandler.CreateChat())
-	router.GET("/chats/:id", chatHandler.GetChat())
-
-	router.GET("/chatmessages/:id", messageHandler.GetChatMessages())
-	router.POST("/messages", messageHandler.SendMessages())
-
-	router.Run("localhost:8080")
+	server := Server{}
+	server.Build()
+	server.Run()
 }
 
-func initHandlers() (*handlers.ChatHandler, *handlers.MessageHandler) {
-	var chatRepository repositories.ChatRepository = repositories.NewInMemoryChatRepository()
-	var messageRepository repositories.MessageRepository = repositories.NewInMemoryMessageRepository()
+type Server struct {
+	router         *gin.Engine
+	address        string
+	chatHandler    *handlers.ChatHandler
+	messageHandler *handlers.MessageHandler
+}
+
+func (s *Server) Build() {
+	gin.SetMode(gin.ReleaseMode)
+	s.initHandlers()
+	s.address = "localhost:8080"
+
+	router := gin.Default()
+	router.GET("/chats", s.chatHandler.GetChats())
+	router.POST("/chats", s.chatHandler.CreateChat())
+	router.GET("/chats/:id", s.chatHandler.GetChat())
+
+	router.GET("/chatmessages/:id", s.messageHandler.GetChatMessages())
+	router.POST("/messages", s.messageHandler.SendMessages())
+}
+
+func (s *Server) Run() {
+	s.router.Run("localhost:8080")
+}
+
+func (s *Server) initHandlers() {
+	chatRepository := repositories.NewInMemoryChatRepository()
+	messageRepository := repositories.NewInMemoryMessageRepository()
 
 	chatService := services.NewChatService(chatRepository)
 	messageService := services.NewMessageService(messageRepository, chatService)
 
-	chatHandler := handlers.NewChatHandler(chatService)
-	messageHandler := handlers.NewMessageHandler(messageService)
-
-	return chatHandler, messageHandler
+	s.chatHandler = handlers.NewChatHandler(chatService)
+	s.messageHandler = handlers.NewMessageHandler(messageService)
 }
