@@ -1,6 +1,8 @@
 package services
 
 import (
+	"log"
+
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/domain/models"
 	"github.com/kkonst40/ichat/internal/repositories"
@@ -10,21 +12,24 @@ type ChatService struct {
 	chatRepository repositories.ChatRepository
 }
 
-func NewChatService() *ChatService {
-	repo := repositories.NewInMemoryChatRepository()
+func NewChatService(newChatRepository repositories.ChatRepository) *ChatService {
 	service := ChatService{
-		chatRepository: repo,
+		chatRepository: newChatRepository,
 	}
+
+	log.Println(service)
+	log.Println(&service)
 
 	return &service
 }
 
 func (s *ChatService) GetChat(id uuid.UUID) (*models.Chat, error) {
+	log.Println(s.chatRepository)
 	chat, err := s.chatRepository.GetChat(id)
 	return chat, err
 }
 
-func (s *ChatService) GetChats() ([]models.Chat, error) {
+func (s *ChatService) GetChats() ([]*models.Chat, error) {
 	chats, err := s.chatRepository.GetChats()
 	return chats, err
 }

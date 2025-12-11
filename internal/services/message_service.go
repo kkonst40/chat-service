@@ -10,12 +10,16 @@ import (
 
 type MessageService struct {
 	messageRepository repositories.MessageRepository
+	chatService       *ChatService
 }
 
-func NewMessageService() *MessageService {
-	repo := repositories.NewInMemoryMessageRepository()
+func NewMessageService(
+	newMessageRepository repositories.MessageRepository,
+	newChatService *ChatService,
+) *MessageService {
 	service := MessageService{
-		messageRepository: repo,
+		messageRepository: newMessageRepository,
+		chatService:       newChatService,
 	}
 
 	return &service
@@ -24,6 +28,14 @@ func NewMessageService() *MessageService {
 func (s *MessageService) GetMessage(id uuid.UUID) (*models.Message, error) {
 	message, err := s.messageRepository.GetMessage(id)
 	return message, err
+}
+
+func (s *MessageService) GetChatMessages(chatId uuid.UUID) ([]*models.Message, error) {
+	if _, err := s.chatService.GetChat(chatId); err != nil {
+		return nil, err
+	}
+	messages, err := s.messageRepository.GetChatMessages(chatId)
+	return messages, err
 }
 
 func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*models.Message, error) {

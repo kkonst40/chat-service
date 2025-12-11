@@ -9,6 +9,7 @@ import (
 
 type MessageRepository interface {
 	GetMessage(id uuid.UUID) (*models.Message, error)
+	GetChatMessages(chatId uuid.UUID) ([]*models.Message, error)
 	CreateMessage(m *models.Message) error
 	UpdateMessage(m *models.Message) error
 	DeleteMessage(id uuid.UUID) error
@@ -32,6 +33,16 @@ func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*models.Message, e
 		return nil, errors.New("message with ID {} does not exist")
 	}
 	return message, nil
+}
+
+func (r *InMemoryMessageRepository) GetChatMessages(chatId uuid.UUID) ([]*models.Message, error) {
+	messages := make([]*models.Message, 0)
+	for _, v := range r.messages {
+		if v.ChatID == chatId {
+			messages = append(messages, v)
+		}
+	}
+	return messages, nil
 }
 
 func (r *InMemoryMessageRepository) CreateMessage(m *models.Message) error {

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"errors"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/domain/models"
@@ -9,7 +10,7 @@ import (
 
 type ChatRepository interface {
 	GetChat(id uuid.UUID) (*models.Chat, error)
-	GetChats() ([]models.Chat, error)
+	GetChats() ([]*models.Chat, error)
 	CreateChat(c *models.Chat) error
 	UpdateChatName(id uuid.UUID, name string) error
 	AddChatUser(id, userId uuid.UUID) error
@@ -25,6 +26,9 @@ func NewInMemoryChatRepository() *InMemoryChatRepository {
 		chats: map[uuid.UUID]*models.Chat{},
 	}
 
+	log.Println(repo)
+	log.Println(&repo)
+
 	return &repo
 }
 
@@ -36,12 +40,12 @@ func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
 	return chat, nil
 }
 
-func (r *InMemoryChatRepository) GetChats() ([]models.Chat, error) {
-	result := make([]models.Chat, 0, len(r.chats))
+func (r *InMemoryChatRepository) GetChats() ([]*models.Chat, error) {
+	chats := make([]*models.Chat, 0, len(r.chats))
 	for _, v := range r.chats {
-		result = append(result, *v)
+		chats = append(chats, v)
 	}
-	return result, nil
+	return chats, nil
 }
 
 func (r *InMemoryChatRepository) CreateChat(c *models.Chat) error {
