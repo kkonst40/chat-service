@@ -1,8 +1,6 @@
 package services
 
 import (
-	"log"
-
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/domain/models"
 	"github.com/kkonst40/ichat/internal/repositories"
@@ -21,7 +19,6 @@ func NewChatService(newChatRepository repositories.ChatRepository) *ChatService 
 }
 
 func (s *ChatService) GetChat(id uuid.UUID) (*models.Chat, error) {
-	log.Println(s.chatRepository)
 	chat, err := s.chatRepository.GetChat(id)
 	return chat, err
 }

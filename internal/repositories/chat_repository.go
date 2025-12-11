@@ -1,7 +1,8 @@
 package repositories
 
 import (
-	"errors"
+	"fmt"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/domain/models"
@@ -18,25 +19,33 @@ type ChatRepository interface {
 
 type InMemoryChatRepository struct {
 	chats map[uuid.UUID]*models.Chat
+	mu    sync.RWMutex
 }
 
 func NewInMemoryChatRepository() *InMemoryChatRepository {
 	repo := InMemoryChatRepository{
-		chats: map[uuid.UUID]*models.Chat{},
+		chats: make(map[uuid.UUID]*models.Chat),
+		mu:    sync.RWMutex{},
 	}
 
 	return &repo
 }
 
 func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	chat, ok := r.chats[id]
 	if !ok {
-		return nil, errors.New("chat with ID {} does not exist")
+		return nil, fmt.Errorf("chat with ID %s does not exist", id)
 	}
 	return chat, nil
 }
 
 func (r *InMemoryChatRepository) GetChats() ([]*models.Chat, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	chats := make([]*models.Chat, 0, len(r.chats))
 	for _, v := range r.chats {
 		chats = append(chats, v)
@@ -45,24 +54,42 @@ func (r *InMemoryChatRepository) GetChats() ([]*models.Chat, error) {
 }
 
 func (r *InMemoryChatRepository) CreateChat(c *models.Chat) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if _, ok := r.chats[c.ID]; ok {
-		return errors.New("chat with ID {} already exists")
+		return fmt.Errorf("chat with ID %s already exists", c.ID)
 	}
 	r.chats[c.ID] = c
 	return nil
 }
 
 func (r *InMemoryChatRepository) UpdateChatName(id uuid.UUID, name string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.chats[id]; !ok {
+		return fmt.Errorf("chat with ID %s does not exist", id)
+	}
 	r.chats[id].Name = name
 	return nil
 }
 
 func (r *InMemoryChatRepository) AddChatUser(id uuid.UUID, userId uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.chats[id]; !ok {
+		return fmt.Errorf("chat with ID %s does not exist", id)
+	}
 	r.chats[id].UserIDs = append(r.chats[id].UserIDs, userId)
 	return nil
 }
 
 func (r *InMemoryChatRepository) DeleteChat(id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	delete(r.chats, id)
 	return nil
 }
