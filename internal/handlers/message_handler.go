@@ -21,11 +21,10 @@ func NewMessageHandler(newMessageService *services.MessageService) *MessageHandl
 }
 
 func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		idParam := ctx.Param("id")
-		id, err := uuid.Parse(idParam)
+	return func(c *gin.Context) {
+		id, err := uuid.Parse(c.Param("id"))
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
 			})
 			return
@@ -33,41 +32,46 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 
 		messages, err := h.messageService.GetChatMessages(id)
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Chat not found",
 			})
 			return
 		}
 
-		ctx.JSON(http.StatusOK, messages)
+		c.JSON(http.StatusOK, messages)
 	}
 }
 
 func (h *MessageHandler) SendMessages() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
+	return func(c *gin.Context) {
 		var req struct {
-			UserID uuid.UUID `json:"user_id" binding:"required"`
-			ChatID uuid.UUID `json:"chat_id" binding:"required"`
+			ChatID uuid.UUID `json:"chatId" binding:"required"`
 			Text   string    `json:"text" binding:"required"`
 		}
 
-		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error":   "Invalid request body",
 				"details": err.Error(),
 			})
 			return
 		}
 
-		_, err := h.messageService.CreateMessage(req.UserID, req.ChatID, req.Text)
+		userId, err := uuid.Parse(c.GetString("userID"))
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		message, err := h.messageService.CreateMessage(userId, req.ChatID, req.Text)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Failed to send message",
 				"details": err.Error(),
 			})
 			return
 		}
 
-		ctx.Status(http.StatusCreated)
+		c.JSON(http.StatusCreated, message)
 	}
 }

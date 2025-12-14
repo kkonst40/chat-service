@@ -23,8 +23,8 @@ func (s *ChatService) GetChat(id uuid.UUID) (*models.Chat, error) {
 	return chat, err
 }
 
-func (s *ChatService) GetChats() ([]*models.Chat, error) {
-	chats, err := s.chatRepository.GetChats()
+func (s *ChatService) GetChats(userId uuid.UUID) ([]*models.Chat, error) {
+	chats, err := s.chatRepository.GetChats(userId)
 	return chats, err
 }
 

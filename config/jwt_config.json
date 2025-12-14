@@ -1,0 +1,6 @@
+{
+    "secretKey":  "gFz#2L9!qV7m@Wz^r3XdY$KjTp6eMb1A&CyGnZh%Uw0NvB8sRf4HxDJaEoIlCtQk",
+    "issuer":     "ibartender-api",
+    "audience":   "ibartender-client",
+    "cookieName": "pechenye"
+}

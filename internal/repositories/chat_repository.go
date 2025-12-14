@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/google/uuid"
@@ -10,7 +11,7 @@ import (
 
 type ChatRepository interface {
 	GetChat(id uuid.UUID) (*models.Chat, error)
-	GetChats() ([]*models.Chat, error)
+	GetChats(userId uuid.UUID) ([]*models.Chat, error)
 	CreateChat(c *models.Chat) error
 	UpdateChatName(id uuid.UUID, name string) error
 	AddChatUser(id, userId uuid.UUID) error
@@ -42,13 +43,15 @@ func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
 	return chat, nil
 }
 
-func (r *InMemoryChatRepository) GetChats() ([]*models.Chat, error) {
+func (r *InMemoryChatRepository) GetChats(userId uuid.UUID) ([]*models.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	chats := make([]*models.Chat, 0, len(r.chats))
+	chats := make([]*models.Chat, 0)
 	for _, v := range r.chats {
-		chats = append(chats, v)
+		if slices.Contains(v.UserIDs, userId) {
+			chats = append(chats, v)
+		}
 	}
 	return chats, nil
 }

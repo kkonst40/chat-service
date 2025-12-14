@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,18 +18,14 @@ func NewChatHandler(newChatService *services.ChatService) *ChatHandler {
 		chatService: newChatService,
 	}
 
-	log.Println(handler)
-	log.Println(&handler)
-
 	return &handler
 }
 
 func (h *ChatHandler) GetChat() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		idParam := ctx.Param("id")
-		id, err := uuid.Parse(idParam)
+	return func(c *gin.Context) {
+		id, err := uuid.Parse(c.Param("id"))
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
 			})
 			return
@@ -38,31 +33,41 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 
 		chat, err := h.chatService.GetChat(id)
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{
+			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Chat not found",
 			})
 			return
 		}
 
-		ctx.JSON(http.StatusOK, chat)
+		c.JSON(http.StatusOK, chat)
 	}
 }
 
 func (h *ChatHandler) GetChats() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		chats, _ := h.chatService.GetChats()
-		ctx.JSON(http.StatusOK, chats)
+	return func(c *gin.Context) {
+		userId, err := uuid.Parse(c.GetString("userID"))
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		chats, err := h.chatService.GetChats(userId)
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		c.JSON(http.StatusOK, chats)
 	}
 }
 
 func (h *ChatHandler) CreateChat() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
+	return func(c *gin.Context) {
 		var req struct {
 			Name string `json:"name" binding:"required"`
 		}
 
-		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error":   "Invalid request body",
 				"details": err.Error(),
 			})
@@ -70,15 +75,21 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 		}
 
 		if req.Name == "" {
-			ctx.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Chat name is required",
 			})
 			return
 		}
 
-		chat, err := h.chatService.CreateChat(req.Name, []uuid.UUID{})
+		userId, err := uuid.Parse(c.GetString("userID"))
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		chat, err := h.chatService.CreateChat(req.Name, []uuid.UUID{userId})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Failed to create chat",
 				"details": err.Error(),
 			})
@@ -86,8 +97,75 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 		}
 
 		location := fmt.Sprintf("/chats/%s", chat.ID.String())
-		ctx.Header("Location", location)
+		c.Header("Location", location)
 
-		ctx.Status(http.StatusCreated)
+		c.Status(http.StatusCreated)
+	}
+}
+
+func (h *ChatHandler) AddChatUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		//
+	}
+}
+
+func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid chat ID format",
+			})
+			return
+		}
+
+		var req struct {
+			Name string `json:"name" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "Invalid request body",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		if req.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Chat name is required",
+			})
+			return
+		}
+
+		err = h.chatService.UpdateChatName(id, req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to create chat",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid chat ID format",
+			})
+			return
+		}
+
+		err = h.chatService.DeleteChat(id)
+		if err != nil {
+			//
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }
