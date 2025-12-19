@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/domain/models"
+	"github.com/kkonst40/ichat/internal/models"
 )
 
 type MessageRepository interface {
