@@ -1,18 +1,18 @@
-package handlers
+package handler
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/services"
+	"github.com/kkonst40/ichat/internal/service"
 )
 
 type MessageHandler struct {
-	messageService *services.MessageService
+	messageService *service.MessageService
 }
 
-func NewMessageHandler(newMessageService *services.MessageService) *MessageHandler {
+func NewMessageHandler(newMessageService *service.MessageService) *MessageHandler {
 	handler := MessageHandler{
 		messageService: newMessageService,
 	}

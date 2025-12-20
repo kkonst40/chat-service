@@ -1,20 +1,20 @@
-package services
+package service
 
 import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/models"
-	"github.com/kkonst40/ichat/internal/repositories"
+	"github.com/kkonst40/ichat/internal/model"
+	"github.com/kkonst40/ichat/internal/repository"
 )
 
 type MessageService struct {
-	messageRepository repositories.MessageRepository
+	messageRepository repository.MessageRepository
 	chatService       *ChatService
 }
 
 func NewMessageService(
-	newMessageRepository repositories.MessageRepository,
+	newMessageRepository repository.MessageRepository,
 	newChatService *ChatService,
 ) *MessageService {
 	service := MessageService{
@@ -25,12 +25,12 @@ func NewMessageService(
 	return &service
 }
 
-func (s *MessageService) GetMessage(id uuid.UUID) (*models.Message, error) {
+func (s *MessageService) GetMessage(id uuid.UUID) (*model.Message, error) {
 	message, err := s.messageRepository.GetMessage(id)
 	return message, err
 }
 
-func (s *MessageService) GetChatMessages(chatId uuid.UUID) ([]*models.Message, error) {
+func (s *MessageService) GetChatMessages(chatId uuid.UUID) ([]*model.Message, error) {
 	if _, err := s.chatService.GetChat(chatId); err != nil {
 		return nil, err
 	}
@@ -38,13 +38,13 @@ func (s *MessageService) GetChatMessages(chatId uuid.UUID) ([]*models.Message, e
 	return messages, err
 }
 
-func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*models.Message, error) {
+func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*model.Message, error) {
 	newId, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
 	}
 
-	message := &models.Message{
+	message := &model.Message{
 		ID:        newId,
 		UserID:    userID,
 		ChatID:    chatID,
@@ -62,7 +62,7 @@ func (s *MessageService) UpdateMessage(id uuid.UUID, text string) error {
 		return err
 	}
 
-	newMessage := &models.Message{
+	newMessage := &model.Message{
 		ID:        id,
 		UserID:    message.UserID,
 		ChatID:    message.ChatID,

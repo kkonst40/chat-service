@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"fmt"
@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/services"
+	"github.com/kkonst40/ichat/internal/service"
 )
 
 type ChatHandler struct {
-	chatService *services.ChatService
+	chatService *service.ChatService
 }
 
-func NewChatHandler(newChatService *services.ChatService) *ChatHandler {
+func NewChatHandler(newChatService *service.ChatService) *ChatHandler {
 	handler := ChatHandler{
 		chatService: newChatService,
 	}
@@ -167,5 +167,11 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func (h *ChatHandler) ConnectToChat() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
 	}
 }

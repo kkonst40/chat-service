@@ -1,4 +1,4 @@
-package repositories
+package repository
 
 import (
 	"fmt"
@@ -6,33 +6,33 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/models"
+	"github.com/kkonst40/ichat/internal/model"
 )
 
 type ChatRepository interface {
-	GetChat(id uuid.UUID) (*models.Chat, error)
-	GetChats(userId uuid.UUID) ([]*models.Chat, error)
-	CreateChat(c *models.Chat) error
+	GetChat(id uuid.UUID) (*model.Chat, error)
+	GetChats(userId uuid.UUID) ([]*model.Chat, error)
+	CreateChat(c *model.Chat) error
 	UpdateChatName(id uuid.UUID, name string) error
 	AddChatUser(id, userId uuid.UUID) error
 	DeleteChat(id uuid.UUID) error
 }
 
 type InMemoryChatRepository struct {
-	chats map[uuid.UUID]*models.Chat
+	chats map[uuid.UUID]*model.Chat
 	mu    sync.RWMutex
 }
 
 func NewInMemoryChatRepository() *InMemoryChatRepository {
 	repo := InMemoryChatRepository{
-		chats: make(map[uuid.UUID]*models.Chat),
+		chats: make(map[uuid.UUID]*model.Chat),
 		mu:    sync.RWMutex{},
 	}
 
 	return &repo
 }
 
-func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
+func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*model.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -43,11 +43,11 @@ func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*models.Chat, error) {
 	return chat, nil
 }
 
-func (r *InMemoryChatRepository) GetChats(userId uuid.UUID) ([]*models.Chat, error) {
+func (r *InMemoryChatRepository) GetChats(userId uuid.UUID) ([]*model.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	chats := make([]*models.Chat, 0)
+	chats := make([]*model.Chat, 0)
 	for _, v := range r.chats {
 		if slices.Contains(v.UserIDs, userId) {
 			chats = append(chats, v)
@@ -56,7 +56,7 @@ func (r *InMemoryChatRepository) GetChats(userId uuid.UUID) ([]*models.Chat, err
 	return chats, nil
 }
 
-func (r *InMemoryChatRepository) CreateChat(c *models.Chat) error {
+func (r *InMemoryChatRepository) CreateChat(c *model.Chat) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	s := server.New()
+	s := server.NewHttpServer()
 	s.Run()
 }

@@ -1,16 +1,16 @@
-package services
+package service
 
 import (
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/models"
-	"github.com/kkonst40/ichat/internal/repositories"
+	"github.com/kkonst40/ichat/internal/model"
+	"github.com/kkonst40/ichat/internal/repository"
 )
 
 type ChatService struct {
-	chatRepository repositories.ChatRepository
+	chatRepository repository.ChatRepository
 }
 
-func NewChatService(newChatRepository repositories.ChatRepository) *ChatService {
+func NewChatService(newChatRepository repository.ChatRepository) *ChatService {
 	service := ChatService{
 		chatRepository: newChatRepository,
 	}
@@ -18,23 +18,23 @@ func NewChatService(newChatRepository repositories.ChatRepository) *ChatService 
 	return &service
 }
 
-func (s *ChatService) GetChat(id uuid.UUID) (*models.Chat, error) {
+func (s *ChatService) GetChat(id uuid.UUID) (*model.Chat, error) {
 	chat, err := s.chatRepository.GetChat(id)
 	return chat, err
 }
 
-func (s *ChatService) GetChats(userId uuid.UUID) ([]*models.Chat, error) {
+func (s *ChatService) GetChats(userId uuid.UUID) ([]*model.Chat, error) {
 	chats, err := s.chatRepository.GetChats(userId)
 	return chats, err
 }
 
-func (s *ChatService) CreateChat(name string, userIds []uuid.UUID) (*models.Chat, error) {
+func (s *ChatService) CreateChat(name string, userIds []uuid.UUID) (*model.Chat, error) {
 	newId, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
 	}
 
-	chat := &models.Chat{
+	chat := &model.Chat{
 		ID:      newId,
 		Name:    name,
 		UserIDs: userIds,

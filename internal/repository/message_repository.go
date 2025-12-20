@@ -1,36 +1,36 @@
-package repositories
+package repository
 
 import (
 	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/models"
+	"github.com/kkonst40/ichat/internal/model"
 )
 
 type MessageRepository interface {
-	GetMessage(id uuid.UUID) (*models.Message, error)
-	GetChatMessages(chatId uuid.UUID) ([]*models.Message, error)
-	CreateMessage(m *models.Message) error
-	UpdateMessage(m *models.Message) error
+	GetMessage(id uuid.UUID) (*model.Message, error)
+	GetChatMessages(chatId uuid.UUID) ([]*model.Message, error)
+	CreateMessage(m *model.Message) error
+	UpdateMessage(m *model.Message) error
 	DeleteMessage(id uuid.UUID) error
 }
 
 type InMemoryMessageRepository struct {
-	messages map[uuid.UUID]*models.Message
+	messages map[uuid.UUID]*model.Message
 	mu       sync.Mutex
 }
 
 func NewInMemoryMessageRepository() *InMemoryMessageRepository {
 	repo := InMemoryMessageRepository{
-		messages: make(map[uuid.UUID]*models.Message),
+		messages: make(map[uuid.UUID]*model.Message),
 		mu:       sync.Mutex{},
 	}
 
 	return &repo
 }
 
-func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*models.Message, error) {
+func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -41,11 +41,11 @@ func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*models.Message, e
 	return message, nil
 }
 
-func (r *InMemoryMessageRepository) GetChatMessages(chatId uuid.UUID) ([]*models.Message, error) {
+func (r *InMemoryMessageRepository) GetChatMessages(chatId uuid.UUID) ([]*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	messages := make([]*models.Message, 0)
+	messages := make([]*model.Message, 0)
 	for _, v := range r.messages {
 		if v.ChatID == chatId {
 			messages = append(messages, v)
@@ -54,7 +54,7 @@ func (r *InMemoryMessageRepository) GetChatMessages(chatId uuid.UUID) ([]*models
 	return messages, nil
 }
 
-func (r *InMemoryMessageRepository) CreateMessage(m *models.Message) error {
+func (r *InMemoryMessageRepository) CreateMessage(m *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -65,7 +65,7 @@ func (r *InMemoryMessageRepository) CreateMessage(m *models.Message) error {
 	return nil
 }
 
-func (r *InMemoryMessageRepository) UpdateMessage(m *models.Message) error {
+func (r *InMemoryMessageRepository) UpdateMessage(m *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

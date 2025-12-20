@@ -3,20 +3,20 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkonst40/ichat/internal/config"
-	"github.com/kkonst40/ichat/internal/handlers"
+	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/middleware"
-	"github.com/kkonst40/ichat/internal/repositories"
-	"github.com/kkonst40/ichat/internal/services"
+	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/kkonst40/ichat/internal/service"
 )
 
-type Server struct {
+type HttpServer struct {
 	router         *gin.Engine
 	address        string
-	chatHandler    *handlers.ChatHandler
-	messageHandler *handlers.MessageHandler
+	chatHandler    *handler.ChatHandler
+	messageHandler *handler.MessageHandler
 }
 
-func New() *Server {
+func NewHttpServer() *HttpServer {
 	gin.SetMode(gin.ReleaseMode)
 
 	jwtConfig, err := config.LoadJwtConfig()
@@ -24,12 +24,12 @@ func New() *Server {
 		panic(err)
 	}
 
-	chatRepository := repositories.NewInMemoryChatRepository()
-	messageRepository := repositories.NewInMemoryMessageRepository()
-	chatService := services.NewChatService(chatRepository)
-	messageService := services.NewMessageService(messageRepository, chatService)
-	chatHandler := handlers.NewChatHandler(chatService)
-	messageHandler := handlers.NewMessageHandler(messageService)
+	chatRepository := repository.NewInMemoryChatRepository()
+	messageRepository := repository.NewInMemoryMessageRepository()
+	chatService := service.NewChatService(chatRepository)
+	messageService := service.NewMessageService(messageRepository, chatService)
+	chatHandler := handler.NewChatHandler(chatService)
+	messageHandler := handler.NewMessageHandler(messageService)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -45,7 +45,7 @@ func New() *Server {
 	router.GET("/chatmessages/:id", middleware.AuthMiddleware(jwtConfig), messageHandler.GetChatMessages())
 	router.POST("/messages", middleware.AuthMiddleware(jwtConfig), messageHandler.SendMessages())
 
-	server := &Server{
+	server := &HttpServer{
 		router:         router,
 		address:        "localhost:8080",
 		chatHandler:    chatHandler,
@@ -55,6 +55,6 @@ func New() *Server {
 	return server
 }
 
-func (s *Server) Run() {
+func (s *HttpServer) Run() {
 	s.router.Run(s.address)
 }
