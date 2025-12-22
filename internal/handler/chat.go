@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/service"
+	"github.com/kkonst40/ichat/internal/ws"
 )
 
 type ChatHandler struct {
@@ -170,8 +171,23 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 	}
 }
 
-func (h *ChatHandler) ConnectToChat() gin.HandlerFunc {
+func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		userId, err := uuid.Parse(c.GetString("userID"))
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 
+		chatId, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid chat ID format",
+			})
+			return
+		}
+
+		wsServer.Connect(c.Writer, c.Request, userId, chatId)
+		c.Status(http.StatusOK)
 	}
 }

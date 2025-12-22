@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-func ReadJson(path string, dataStruct interface{}) error {
+func ReadJson(path string, dataStruct any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("reading config file error: %v", err)

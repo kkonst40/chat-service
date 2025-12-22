@@ -29,6 +29,31 @@ func NewInMemoryChatRepository() *InMemoryChatRepository {
 		mu:    sync.RWMutex{},
 	}
 
+	id0 := uuid.MustParse("018f95a6-8d27-7e03-822c-6a81ce0d1f4b")
+	id1 := uuid.MustParse("018f95a6-8d28-7b41-8d9f-12e8b341a6c5")
+	id2 := uuid.MustParse("018f95a6-8d28-7c8a-9123-4f67d890a12e")
+	id3 := uuid.MustParse("018f95a6-8d28-7de9-b8a4-5c32f1e09d76")
+	id4 := uuid.MustParse("018f95a6-8d29-7023-84d1-9a0b2c3e4f5a")
+	id5 := uuid.MustParse("018f95a6-8d29-71bc-9a8b-76e54d32c10f")
+	id6 := uuid.MustParse("018f95a6-8d2a-72f4-a123-b456c789d0e1")
+	id7 := uuid.MustParse("018f95a6-8d2a-743d-b987-6543210fedcb")
+	id8 := uuid.MustParse("018f95a6-8d2b-7586-c246-8ace13579bdf")
+	id9 := uuid.MustParse("018f95a6-8d2b-76cf-d369-147f258b036a")
+
+	user1 := uuid.MustParse("018f95a5-bc7c-7e5c-9a4a-12c5d7316c3e")
+	user2 := uuid.MustParse("018f95a5-bc7d-7500-9b03-3e2a1c5d0f4a")
+
+	repo.chats[id0] = &model.Chat{ID: id0, Name: "Chat0", UserIDs: []uuid.UUID{user1, user2}}
+	repo.chats[id1] = &model.Chat{ID: id1, Name: "Chat1", UserIDs: []uuid.UUID{user1, user2}}
+	repo.chats[id2] = &model.Chat{ID: id2, Name: "Chat2", UserIDs: []uuid.UUID{user2}}
+	repo.chats[id3] = &model.Chat{ID: id3, Name: "Chat3", UserIDs: []uuid.UUID{user1, user2}}
+	repo.chats[id4] = &model.Chat{ID: id4, Name: "Chat4", UserIDs: []uuid.UUID{user2}}
+	repo.chats[id5] = &model.Chat{ID: id5, Name: "Chat5", UserIDs: []uuid.UUID{user1}}
+	repo.chats[id6] = &model.Chat{ID: id6, Name: "Chat6", UserIDs: []uuid.UUID{user2}}
+	repo.chats[id7] = &model.Chat{ID: id7, Name: "Chat7", UserIDs: []uuid.UUID{user1, user2}}
+	repo.chats[id8] = &model.Chat{ID: id8, Name: "Chat8", UserIDs: []uuid.UUID{user1}}
+	repo.chats[id9] = &model.Chat{ID: id9, Name: "Chat9", UserIDs: []uuid.UUID{user1, user2}}
+
 	return &repo
 }
 
