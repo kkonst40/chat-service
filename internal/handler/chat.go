@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
 )
@@ -40,7 +41,12 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, chat)
+		resp := dto.GetChatResponse{
+			ID:   chat.ID,
+			Name: chat.Name,
+		}
+
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -54,18 +60,28 @@ func (h *ChatHandler) GetChats() gin.HandlerFunc {
 
 		chats, err := h.chatService.GetChats(userId)
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			//
 			return
 		}
-		c.JSON(http.StatusOK, chats)
+
+		resp := dto.GetChatsResponse{
+			Chats: make([]dto.GetChatResponse, 0, len(chats)),
+		}
+
+		for _, chat := range chats {
+			resp.Chats = append(resp.Chats, dto.GetChatResponse{
+				ID:   chat.ID,
+				Name: chat.Name,
+			})
+		}
+
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
 func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req struct {
-			Name string `json:"name" binding:"required"`
-		}
+		var req dto.CreateChatRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -90,10 +106,7 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 
 		chat, err := h.chatService.CreateChat(req.Name, []uuid.UUID{userId})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to create chat",
-				"details": err.Error(),
-			})
+			//
 			return
 		}
 
@@ -104,14 +117,10 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 	}
 }
 
-func (h *ChatHandler) AddChatUser() gin.HandlerFunc {
+func (h *ChatHandler) AddChatUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		//
-	}
-}
+		var req dto.AddChatUsersRequest
 
-func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
-	return func(c *gin.Context) {
 		id, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -120,8 +129,33 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 			return
 		}
 
-		var req struct {
-			Name string `json:"name" binding:"required"`
+		err = c.ShouldBindJSON(&req)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "Invalid request body",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		err = h.chatService.AddChatUser(id, req.Users)
+		if err != nil {
+			//
+			return
+		}
+	}
+}
+
+func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req dto.UpdateChatNameRequest
+
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid chat ID format",
+			})
+			return
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -141,10 +175,7 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 
 		err = h.chatService.UpdateChatName(id, req.Name)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to create chat",
-				"details": err.Error(),
-			})
+			//
 			return
 		}
 
@@ -165,6 +196,7 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 		err = h.chatService.DeleteChat(id)
 		if err != nil {
 			//
+			return
 		}
 
 		c.Status(http.StatusNoContent)
@@ -187,6 +219,10 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 			return
 		}
 
-		wsServer.Connect(c.Writer, c.Request, userId, chatId)
+		err = wsServer.Connect(c.Writer, c.Request, userId, chatId)
+		if err != nil {
+			//
+			return
+		}
 	}
 }

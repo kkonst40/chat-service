@@ -49,7 +49,7 @@ func (s *ChatService) UpdateChatName(id uuid.UUID, name string) error {
 	return err
 }
 
-func (s *ChatService) AddChatUser(id, userId uuid.UUID) error {
+func (s *ChatService) AddChatUser(id uuid.UUID, userId []uuid.UUID) error {
 	err := s.chatRepository.AddChatUser(id, userId)
 	return err
 }

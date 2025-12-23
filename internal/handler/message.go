@@ -32,9 +32,7 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 
 		messages, err := h.messageService.GetChatMessages(id)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Chat not found",
-			})
+			//
 			return
 		}
 

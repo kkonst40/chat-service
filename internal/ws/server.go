@@ -25,11 +25,11 @@ func NewWsServer(chatService *service.ChatService, messageService *service.Messa
 	}
 }
 
-func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUID, chatId uuid.UUID) {
+func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUID, chatId uuid.UUID) error {
 	upgrader := websocket.Upgrader{}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return
+		return err
 	}
 
 	user := &user{
@@ -52,6 +52,7 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUI
 
 	go user.writeMessage()
 	go user.readMessage(room)
+	return nil
 }
 
 func (s *Server) runRoom(chatId uuid.UUID) error {

@@ -14,7 +14,7 @@ type ChatRepository interface {
 	GetChats(userId uuid.UUID) ([]*model.Chat, error)
 	CreateChat(c *model.Chat) error
 	UpdateChatName(id uuid.UUID, name string) error
-	AddChatUser(id, userId uuid.UUID) error
+	AddChatUser(id uuid.UUID, userIds []uuid.UUID) error
 	DeleteChat(id uuid.UUID) error
 }
 
@@ -103,14 +103,14 @@ func (r *InMemoryChatRepository) UpdateChatName(id uuid.UUID, name string) error
 	return nil
 }
 
-func (r *InMemoryChatRepository) AddChatUser(id uuid.UUID, userId uuid.UUID) error {
+func (r *InMemoryChatRepository) AddChatUser(id uuid.UUID, userId []uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if _, ok := r.chats[id]; !ok {
 		return fmt.Errorf("chat with ID %s does not exist", id)
 	}
-	r.chats[id].UserIDs = append(r.chats[id].UserIDs, userId)
+	r.chats[id].UserIDs = append(r.chats[id].UserIDs, userId...)
 	return nil
 }
 
