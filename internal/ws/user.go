@@ -36,11 +36,11 @@ func (u *user) writeMessage() {
 	}()
 
 	for message := range u.send {
-		jsonMessage := jsonMessage{
-			userID: message.userID.String(),
-			text:   string(message.data),
+		msg := jsonMessage{
+			UserID: message.userID.String(),
+			Text:   string(message.data),
 		}
-		err := u.conn.WriteJSON(jsonMessage)
+		err := u.conn.WriteJSON(msg)
 		if err != nil {
 			break
 		}

@@ -41,37 +41,3 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 		c.JSON(http.StatusOK, messages)
 	}
 }
-
-func (h *MessageHandler) SendMessages() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			ChatID uuid.UUID `json:"chatId" binding:"required"`
-			Text   string    `json:"text" binding:"required"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		userId, err := uuid.Parse(c.GetString("userID"))
-		if err != nil {
-			c.Status(http.StatusInternalServerError)
-			return
-		}
-
-		message, err := h.messageService.CreateMessage(userId, req.ChatID, req.Text)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to send message",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusCreated, message)
-	}
-}

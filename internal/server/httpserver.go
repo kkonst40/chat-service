@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/handler"
+	"github.com/kkonst40/ichat/internal/middleware"
 	"github.com/kkonst40/ichat/internal/repository"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
@@ -39,12 +40,12 @@ func NewHttpServer() *HttpServer {
 	router.Use(gin.Logger())
 
 	//router.Use(middleware.AuthMiddleware(jwtConfig))
-	//router.Use(middleware.DummyMiddleware())
+	router.Use(middleware.DummyMiddleware())
 	//router.GET("/1", func(c *gin.Context) {
-	//	c.File("./static/chatlist1.html")
+	//	c.File("./static/user1.html")
 	//})
 	//router.GET("/2", func(c *gin.Context) {
-	//	c.File("./static/chatlist2.html")
+	//	c.File("./static/user2.html")
 	//})
 
 	router.GET("/chats", chatHandler.GetChats())
@@ -52,7 +53,7 @@ func NewHttpServer() *HttpServer {
 	router.GET("/chats/:id", chatHandler.GetChat())
 	router.PUT("/chats/:id", chatHandler.UpdateChatName())
 	router.DELETE("/chats/:id", chatHandler.DeleteChat())
-	router.POST("/connect/:id", chatHandler.ConnectToChat(ws))
+	router.GET("/connect/:id", chatHandler.ConnectToChat(ws))
 
 	router.GET("/chatmessages/:id", messageHandler.GetChatMessages())
 

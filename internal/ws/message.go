@@ -10,6 +10,6 @@ type message struct {
 }
 
 type jsonMessage struct {
-	userID string `json:"userId"`
-	text   string `json:"text"`
+	UserID string `json:"userId"`
+	Text   string `json:"text"`
 }

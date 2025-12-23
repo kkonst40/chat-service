@@ -188,6 +188,5 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 		}
 
 		wsServer.Connect(c.Writer, c.Request, userId, chatId)
-		c.Status(http.StatusOK)
 	}
 }
