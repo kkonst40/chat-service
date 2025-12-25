@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,41 +12,42 @@ import (
 type MessageService struct {
 	messageRepository repository.MessageRepository
 	chatService       *ChatService
+	userService       *UserService
 }
 
 func NewMessageService(
 	newMessageRepository repository.MessageRepository,
 	newChatService *ChatService,
+	newUserService *UserService,
 ) *MessageService {
 	service := MessageService{
 		messageRepository: newMessageRepository,
 		chatService:       newChatService,
+		userService:       newUserService,
 	}
 
 	return &service
 }
 
-func (s *MessageService) GetMessage(id uuid.UUID) (*model.Message, error) {
-	message, err := s.messageRepository.GetMessage(id)
-	return message, err
-}
-
-func (s *MessageService) GetChatMessages(chatId uuid.UUID) ([]*model.Message, error) {
-	if _, err := s.chatService.GetChat(chatId); err != nil {
+func (s *MessageService) GetChatMessages(chatID uuid.UUID, requesterID uuid.UUID) ([]*model.Message, error) {
+	if _, err := s.userService.GetChatUser(chatID, requesterID); err != nil {
+		return nil, fmt.Errorf("user is not in the chat")
+	}
+	if _, err := s.chatService.GetChat(chatID); err != nil {
 		return nil, err
 	}
-	messages, err := s.messageRepository.GetChatMessages(chatId)
+	messages, err := s.messageRepository.GetChatMessages(chatID)
 	return messages, err
 }
 
 func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*model.Message, error) {
-	newId, err := uuid.NewV7()
+	newID, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
 	}
 
 	message := &model.Message{
-		ID:        newId,
+		ID:        newID,
 		UserID:    userID,
 		ChatID:    chatID,
 		Text:      text,
@@ -56,14 +58,18 @@ func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*
 	return message, err
 }
 
-func (s *MessageService) UpdateMessage(id uuid.UUID, text string) error {
-	message, err := s.messageRepository.GetMessage(id)
+func (s *MessageService) UpdateMessage(msgID uuid.UUID, text string, requesterID uuid.UUID) error {
+	message, err := s.messageRepository.GetMessage(msgID)
 	if err != nil {
 		return err
 	}
 
+	if message.UserID != requesterID {
+		return fmt.Errorf("user is not the owner of the message")
+	}
+
 	newMessage := &model.Message{
-		ID:        id,
+		ID:        msgID,
 		UserID:    message.UserID,
 		ChatID:    message.ChatID,
 		Text:      text,
@@ -74,7 +80,29 @@ func (s *MessageService) UpdateMessage(id uuid.UUID, text string) error {
 	return err
 }
 
-func (s *MessageService) DeleteMessage(id uuid.UUID) error {
-	err := s.messageRepository.DeleteMessage(id)
-	return err
+func (s *MessageService) DeleteMessage(msgID uuid.UUID, requesterID uuid.UUID) error {
+	message, err := s.messageRepository.GetMessage(msgID)
+	if err != nil {
+		return err
+	}
+
+	if message.UserID == requesterID {
+		err = s.messageRepository.DeleteMessage(msgID)
+		return err
+	}
+
+	sender, err := s.userService.GetChatUser(message.ChatID, message.UserID)
+	if err != nil {
+		return err
+	}
+	requester, err := s.userService.GetChatUser(message.ChatID, requesterID)
+	if err != nil {
+		return err
+	}
+
+	if requester.Role <= sender.Role {
+		return fmt.Errorf("user has no permission")
+	}
+
+	return nil
 }

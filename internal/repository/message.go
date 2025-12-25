@@ -9,11 +9,11 @@ import (
 )
 
 type MessageRepository interface {
-	GetMessage(id uuid.UUID) (*model.Message, error)
-	GetChatMessages(chatId uuid.UUID) ([]*model.Message, error)
-	CreateMessage(m *model.Message) error
-	UpdateMessage(m *model.Message) error
-	DeleteMessage(id uuid.UUID) error
+	GetMessage(msgID uuid.UUID) (*model.Message, error)
+	GetChatMessages(chatID uuid.UUID) ([]*model.Message, error)
+	CreateMessage(msg *model.Message) error
+	UpdateMessage(msg *model.Message) error
+	DeleteMessage(msgID uuid.UUID) error
 }
 
 type InMemoryMessageRepository struct {
@@ -30,56 +30,56 @@ func NewInMemoryMessageRepository() *InMemoryMessageRepository {
 	return &repo
 }
 
-func (r *InMemoryMessageRepository) GetMessage(id uuid.UUID) (*model.Message, error) {
+func (r *InMemoryMessageRepository) GetMessage(msgID uuid.UUID) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	message, ok := r.messages[id]
+	message, ok := r.messages[msgID]
 	if !ok {
-		return nil, fmt.Errorf("message with ID %s does not exist", id)
+		return nil, fmt.Errorf("message with ID %s does not exist", msgID)
 	}
 	return message, nil
 }
 
-func (r *InMemoryMessageRepository) GetChatMessages(chatId uuid.UUID) ([]*model.Message, error) {
+func (r *InMemoryMessageRepository) GetChatMessages(chatID uuid.UUID) ([]*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	messages := make([]*model.Message, 0)
 	for _, v := range r.messages {
-		if v.ChatID == chatId {
+		if v.ChatID == chatID {
 			messages = append(messages, v)
 		}
 	}
 	return messages, nil
 }
 
-func (r *InMemoryMessageRepository) CreateMessage(m *model.Message) error {
+func (r *InMemoryMessageRepository) CreateMessage(msg *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.messages[m.ID]; ok {
-		return fmt.Errorf("message with ID %s already exists", m.ID)
+	if _, ok := r.messages[msg.ID]; ok {
+		return fmt.Errorf("message with ID %s already exists", msg.ID)
 	}
-	r.messages[m.ID] = m
+	r.messages[msg.ID] = msg
 	return nil
 }
 
-func (r *InMemoryMessageRepository) UpdateMessage(m *model.Message) error {
+func (r *InMemoryMessageRepository) UpdateMessage(msg *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.messages[m.ID]; !ok {
-		return fmt.Errorf("message with ID %s does not exist", m.ID)
+	if _, ok := r.messages[msg.ID]; !ok {
+		return fmt.Errorf("message with ID %s does not exist", msg.ID)
 	}
-	r.messages[m.ID] = m
+	r.messages[msg.ID] = msg
 	return nil
 }
 
-func (r *InMemoryMessageRepository) DeleteMessage(id uuid.UUID) error {
+func (r *InMemoryMessageRepository) DeleteMessage(msgID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	delete(r.messages, id)
+	delete(r.messages, msgID)
 	return nil
 }

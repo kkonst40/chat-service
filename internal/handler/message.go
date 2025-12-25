@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -30,12 +31,28 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 			return
 		}
 
-		messages, err := h.messageService.GetChatMessages(id)
+		userID := uuid.MustParse(c.GetString("userID"))
+
+		messages, err := h.messageService.GetChatMessages(id, userID)
 		if err != nil {
 			//
 			return
 		}
 
-		c.JSON(http.StatusOK, messages)
+		resp := dto.GetMessagesResponse{
+			Messages: make([]dto.GetMessageResponse, 0, len(messages)),
+		}
+
+		for _, message := range messages {
+			resp.Messages = append(resp.Messages, dto.GetMessageResponse{
+				ID:        message.ID,
+				UserID:    message.UserID,
+				ChatID:    message.ChatID,
+				Text:      message.Text,
+				CreatedAt: message.CreatedAt,
+			})
+		}
+
+		c.JSON(http.StatusOK, resp)
 	}
 }

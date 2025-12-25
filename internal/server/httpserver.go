@@ -26,10 +26,15 @@ func NewHttpServer() *HttpServer {
 		panic(err)
 	}
 
+	userRepository := repository.NewInMemoryUserRepository()
 	chatRepository := repository.NewInMemoryChatRepository()
 	messageRepository := repository.NewInMemoryMessageRepository()
-	chatService := service.NewChatService(chatRepository)
-	messageService := service.NewMessageService(messageRepository, chatService)
+
+	userService := service.NewUserService(userRepository)
+	chatService := service.NewChatService(chatRepository, userService)
+	messageService := service.NewMessageService(messageRepository, chatService, userService)
+
+	userHandler := handler.NewUserHandler(userService)
 	chatHandler := handler.NewChatHandler(chatService)
 	messageHandler := handler.NewMessageHandler(messageService)
 
@@ -50,12 +55,17 @@ func NewHttpServer() *HttpServer {
 
 	router.GET("/chats", chatHandler.GetChats())
 	router.POST("/chats", chatHandler.CreateChat())
-	router.GET("/chats/:id", chatHandler.GetChat())
-	router.PUT("/chats/:id", chatHandler.UpdateChatName())
-	router.DELETE("/chats/:id", chatHandler.DeleteChat())
-	router.GET("/connect/:id", chatHandler.ConnectToChat(ws))
+	router.GET("/chats/:chaId", chatHandler.GetChat())
+	router.PUT("/chats/:chaId", chatHandler.UpdateChatName())
+	router.DELETE("/chats/:chaId", chatHandler.DeleteChat())
+	router.GET("/connect/:chaId", chatHandler.ConnectToChat(ws))
 
-	router.GET("/chatmessages/:id", messageHandler.GetChatMessages())
+	router.GET("/chatusers/:chatId", userHandler.GetChatUsers())
+	router.POST("/chatusers/:chatId", userHandler.AddChatUsers())
+	router.PUT("/chatusers/:chatId/:userId", userHandler.SetChatUserRole())
+	router.DELETE("/chatusers/:chatId/:userId", userHandler.DeleteChatUser())
+
+	router.GET("/chatmessages/:chatId", messageHandler.GetChatMessages())
 
 	server := &HttpServer{
 		router:         router,

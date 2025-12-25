@@ -25,7 +25,7 @@ func NewChatHandler(newChatService *service.ChatService) *ChatHandler {
 
 func (h *ChatHandler) GetChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, err := uuid.Parse(c.Param("id"))
+		ID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -33,7 +33,7 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 			return
 		}
 
-		chat, err := h.chatService.GetChat(id)
+		chat, err := h.chatService.GetChat(ID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Chat not found",
@@ -52,13 +52,13 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 
 func (h *ChatHandler) GetChats() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId, err := uuid.Parse(c.GetString("userID"))
+		userID, err := uuid.Parse(c.GetString("userID"))
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
 
-		chats, err := h.chatService.GetChats(userId)
+		chats, err := h.chatService.GetChats(userID)
 		if err != nil {
 			//
 			return
@@ -98,13 +98,13 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 			return
 		}
 
-		userId, err := uuid.Parse(c.GetString("userID"))
+		userID, err := uuid.Parse(c.GetString("userID"))
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
 
-		chat, err := h.chatService.CreateChat(req.Name, []uuid.UUID{userId})
+		chat, err := h.chatService.CreateChat(req.Name, req.UserIDs, userID)
 		if err != nil {
 			//
 			return
@@ -117,40 +117,11 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 	}
 }
 
-func (h *ChatHandler) AddChatUsers() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req dto.AddChatUsersRequest
-
-		id, err := uuid.Parse(c.Param("id"))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
-			})
-			return
-		}
-
-		err = c.ShouldBindJSON(&req)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		err = h.chatService.AddChatUser(id, req.Users)
-		if err != nil {
-			//
-			return
-		}
-	}
-}
-
 func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.UpdateChatNameRequest
 
-		id, err := uuid.Parse(c.Param("id"))
+		chatID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -173,7 +144,9 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 			return
 		}
 
-		err = h.chatService.UpdateChatName(id, req.Name)
+		userID := uuid.MustParse(c.GetString("userID"))
+
+		err = h.chatService.UpdateChatName(chatID, req.Name, userID)
 		if err != nil {
 			//
 			return
@@ -185,7 +158,7 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 
 func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, err := uuid.Parse(c.Param("id"))
+		chatID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -193,7 +166,9 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 			return
 		}
 
-		err = h.chatService.DeleteChat(id)
+		userID := uuid.MustParse(c.GetString("userID"))
+
+		err = h.chatService.DeleteChat(chatID, userID)
 		if err != nil {
 			//
 			return
@@ -205,13 +180,13 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 
 func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId, err := uuid.Parse(c.GetString("userID"))
+		userID, err := uuid.Parse(c.GetString("userID"))
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
 
-		chatId, err := uuid.Parse(c.Param("id"))
+		chatID, err := uuid.Parse(c.Param("id"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -219,7 +194,7 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 			return
 		}
 
-		err = wsServer.Connect(c.Writer, c.Request, userId, chatId)
+		err = wsServer.Connect(c.Writer, c.Request, userID, chatID)
 		if err != nil {
 			//
 			return

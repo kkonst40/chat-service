@@ -2,7 +2,6 @@ package repository
 
 import (
 	"fmt"
-	"slices"
 	"sync"
 
 	"github.com/google/uuid"
@@ -10,12 +9,11 @@ import (
 )
 
 type ChatRepository interface {
-	GetChat(id uuid.UUID) (*model.Chat, error)
-	GetChats(userId uuid.UUID) ([]*model.Chat, error)
-	CreateChat(c *model.Chat) error
-	UpdateChatName(id uuid.UUID, name string) error
-	AddChatUser(id uuid.UUID, userIds []uuid.UUID) error
-	DeleteChat(id uuid.UUID) error
+	GetChat(chatID uuid.UUID) (*model.Chat, error)
+	GetChats(chatIDs []uuid.UUID) ([]*model.Chat, error)
+	CreateChat(chat *model.Chat) error
+	UpdateChatName(chatID uuid.UUID, name string) error
+	DeleteChat(chatID uuid.UUID) error
 }
 
 type InMemoryChatRepository struct {
@@ -40,84 +38,68 @@ func NewInMemoryChatRepository() *InMemoryChatRepository {
 	id8 := uuid.MustParse("018f95a6-8d2b-7586-c246-8ace13579bdf")
 	id9 := uuid.MustParse("018f95a6-8d2b-76cf-d369-147f258b036a")
 
-	user1 := uuid.MustParse("018f95a5-bc7c-7e5c-9a4a-12c5d7316c3e")
-	user2 := uuid.MustParse("018f95a5-bc7d-7500-9b03-3e2a1c5d0f4a")
-
-	repo.chats[id0] = &model.Chat{ID: id0, Name: "Chat0", UserIDs: []uuid.UUID{user1, user2}}
-	repo.chats[id1] = &model.Chat{ID: id1, Name: "Chat1", UserIDs: []uuid.UUID{user1, user2}}
-	repo.chats[id2] = &model.Chat{ID: id2, Name: "Chat2", UserIDs: []uuid.UUID{user2}}
-	repo.chats[id3] = &model.Chat{ID: id3, Name: "Chat3", UserIDs: []uuid.UUID{user1, user2}}
-	repo.chats[id4] = &model.Chat{ID: id4, Name: "Chat4", UserIDs: []uuid.UUID{user2}}
-	repo.chats[id5] = &model.Chat{ID: id5, Name: "Chat5", UserIDs: []uuid.UUID{user1}}
-	repo.chats[id6] = &model.Chat{ID: id6, Name: "Chat6", UserIDs: []uuid.UUID{user2}}
-	repo.chats[id7] = &model.Chat{ID: id7, Name: "Chat7", UserIDs: []uuid.UUID{user1, user2}}
-	repo.chats[id8] = &model.Chat{ID: id8, Name: "Chat8", UserIDs: []uuid.UUID{user1}}
-	repo.chats[id9] = &model.Chat{ID: id9, Name: "Chat9", UserIDs: []uuid.UUID{user1, user2}}
+	repo.chats[id0] = &model.Chat{ID: id0, Name: "Chat0"}
+	repo.chats[id1] = &model.Chat{ID: id1, Name: "Chat1"}
+	repo.chats[id2] = &model.Chat{ID: id2, Name: "Chat2"}
+	repo.chats[id3] = &model.Chat{ID: id3, Name: "Chat3"}
+	repo.chats[id4] = &model.Chat{ID: id4, Name: "Chat4"}
+	repo.chats[id5] = &model.Chat{ID: id5, Name: "Chat5"}
+	repo.chats[id6] = &model.Chat{ID: id6, Name: "Chat6"}
+	repo.chats[id7] = &model.Chat{ID: id7, Name: "Chat7"}
+	repo.chats[id8] = &model.Chat{ID: id8, Name: "Chat8"}
+	repo.chats[id9] = &model.Chat{ID: id9, Name: "Chat9"}
 
 	return &repo
 }
 
-func (r *InMemoryChatRepository) GetChat(id uuid.UUID) (*model.Chat, error) {
+func (r *InMemoryChatRepository) GetChat(chatID uuid.UUID) (*model.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	chat, ok := r.chats[id]
+	chat, ok := r.chats[chatID]
 	if !ok {
-		return nil, fmt.Errorf("chat with ID %s does not exist", id)
+		return nil, fmt.Errorf("chat with ID %s does not exist", chatID)
 	}
 	return chat, nil
 }
 
-func (r *InMemoryChatRepository) GetChats(userId uuid.UUID) ([]*model.Chat, error) {
+func (r *InMemoryChatRepository) GetChats(chatIDs []uuid.UUID) ([]*model.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	chats := make([]*model.Chat, 0)
-	for _, v := range r.chats {
-		if slices.Contains(v.UserIDs, userId) {
-			chats = append(chats, v)
-		}
+	chats := make([]*model.Chat, 0, len(chatIDs))
+	for _, ID := range chatIDs {
+		chats = append(chats, r.chats[ID])
 	}
 	return chats, nil
 }
 
-func (r *InMemoryChatRepository) CreateChat(c *model.Chat) error {
+func (r *InMemoryChatRepository) CreateChat(chat *model.Chat) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.chats[c.ID]; ok {
-		return fmt.Errorf("chat with ID %s already exists", c.ID)
+	if _, ok := r.chats[chat.ID]; ok {
+		return fmt.Errorf("chat with ID %s already exists", chat.ID)
 	}
-	r.chats[c.ID] = c
+	r.chats[chat.ID] = chat
 	return nil
 }
 
-func (r *InMemoryChatRepository) UpdateChatName(id uuid.UUID, name string) error {
+func (r *InMemoryChatRepository) UpdateChatName(chatID uuid.UUID, name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.chats[id]; !ok {
-		return fmt.Errorf("chat with ID %s does not exist", id)
+	if _, ok := r.chats[chatID]; !ok {
+		return fmt.Errorf("chat with ID %s does not exist", chatID)
 	}
-	r.chats[id].Name = name
+	r.chats[chatID].Name = name
 	return nil
 }
 
-func (r *InMemoryChatRepository) AddChatUser(id uuid.UUID, userId []uuid.UUID) error {
+func (r *InMemoryChatRepository) DeleteChat(chatID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.chats[id]; !ok {
-		return fmt.Errorf("chat with ID %s does not exist", id)
-	}
-	r.chats[id].UserIDs = append(r.chats[id].UserIDs, userId...)
-	return nil
-}
-
-func (r *InMemoryChatRepository) DeleteChat(id uuid.UUID) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	delete(r.chats, id)
+	delete(r.chats, chatID)
 	return nil
 }
