@@ -9,7 +9,7 @@ type GetUserResponse struct {
 }
 
 type GetChatUsersResponse struct {
-	Users []GetUserResponse
+	Users []GetUserResponse `json:"users"`
 }
 
 type UpdateChatUserRoleRequest struct {

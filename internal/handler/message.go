@@ -23,7 +23,9 @@ func NewMessageHandler(newMessageService *service.MessageService) *MessageHandle
 
 func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, err := uuid.Parse(c.Param("id"))
+		requesterID := uuid.MustParse(c.GetString("requesterID"))
+
+		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -31,9 +33,7 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 			return
 		}
 
-		userID := uuid.MustParse(c.GetString("userID"))
-
-		messages, err := h.messageService.GetChatMessages(id, userID)
+		messages, err := h.messageService.GetChatMessages(chatID, requesterID)
 		if err != nil {
 			//
 			return

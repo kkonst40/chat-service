@@ -22,9 +22,9 @@ func NewUserHandler(newUserService *service.UserService) *UserHandler {
 
 func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		requesterID := uuid.MustParse(c.GetString("userID"))
+		requesterID := uuid.MustParse(c.GetString("requesterID"))
 
-		chatID, err := uuid.Parse(c.Param("id"))
+		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -66,8 +66,9 @@ func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.AddChatUsersRequest
+		requesterID := uuid.MustParse(c.GetString("requesterID"))
 
-		chatID, err := uuid.Parse(c.Param("id"))
+		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid chat ID format",
@@ -84,8 +85,6 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 			return
 		}
 
-		requesterID := uuid.MustParse(c.GetString("userID"))
-
 		err = h.userService.AddChatUsers(chatID, req.UserIDs, requesterID)
 		if err != nil {
 			//
@@ -97,6 +96,7 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.UpdateChatUserRoleRequest
+		requesterID := uuid.MustParse(c.GetString("requesterID"))
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -113,8 +113,6 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 			})
 			return
 		}
-
-		requesterID := uuid.MustParse(c.GetString("userID"))
 
 		err = c.ShouldBindJSON(&req)
 		if err != nil {
@@ -148,6 +146,8 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 
 func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requesterID := uuid.MustParse(c.GetString("requesterID"))
+
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -163,8 +163,6 @@ func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
 			})
 			return
 		}
-
-		requesterID := uuid.MustParse(c.GetString("userID"))
 
 		err = h.userService.DeleteChatUser(chatID, userID, requesterID)
 		if err != nil {
