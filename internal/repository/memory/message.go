@@ -9,13 +9,13 @@ import (
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
-type InMemoryMessageRepository struct {
+type MessageRepository struct {
 	messages map[uuid.UUID]*model.Message
 	mu       sync.Mutex
 }
 
-func NewMessageRepository() *InMemoryMessageRepository {
-	repo := InMemoryMessageRepository{
+func NewMessageRepository() *MessageRepository {
+	repo := MessageRepository{
 		messages: make(map[uuid.UUID]*model.Message),
 		mu:       sync.Mutex{},
 	}
@@ -23,7 +23,7 @@ func NewMessageRepository() *InMemoryMessageRepository {
 	return &repo
 }
 
-func (r *InMemoryMessageRepository) GetMessage(msgID uuid.UUID) (*model.Message, error) {
+func (r *MessageRepository) GetMessage(msgID uuid.UUID) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -34,7 +34,7 @@ func (r *InMemoryMessageRepository) GetMessage(msgID uuid.UUID) (*model.Message,
 	return message, nil
 }
 
-func (r *InMemoryMessageRepository) GetChatMessages(chatID uuid.UUID) ([]*model.Message, error) {
+func (r *MessageRepository) GetChatMessages(chatID uuid.UUID) ([]*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -47,7 +47,7 @@ func (r *InMemoryMessageRepository) GetChatMessages(chatID uuid.UUID) ([]*model.
 	return messages, nil
 }
 
-func (r *InMemoryMessageRepository) CreateMessage(msg *model.Message) error {
+func (r *MessageRepository) CreateMessage(msg *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -58,7 +58,7 @@ func (r *InMemoryMessageRepository) CreateMessage(msg *model.Message) error {
 	return nil
 }
 
-func (r *InMemoryMessageRepository) UpdateMessage(msg *model.Message) error {
+func (r *MessageRepository) UpdateMessage(msg *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -69,7 +69,7 @@ func (r *InMemoryMessageRepository) UpdateMessage(msg *model.Message) error {
 	return nil
 }
 
-func (r *InMemoryMessageRepository) DeleteMessage(msgID uuid.UUID) error {
+func (r *MessageRepository) DeleteMessage(msgID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -77,4 +77,4 @@ func (r *InMemoryMessageRepository) DeleteMessage(msgID uuid.UUID) error {
 	return nil
 }
 
-var _ repository.MessageRepository = (*InMemoryMessageRepository)(nil)
+var _ repository.MessageRepository = (*MessageRepository)(nil)

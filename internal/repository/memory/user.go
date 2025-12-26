@@ -14,12 +14,12 @@ type key struct {
 	ChatID uuid.UUID
 }
 
-type InMemoryUserRepository struct {
+type UserRepository struct {
 	users map[key]*model.User
 	mu    sync.RWMutex
 }
 
-func NewUserRepository() *InMemoryUserRepository {
+func NewUserRepository() *UserRepository {
 	userID1 := uuid.MustParse("018f95a5-bc7c-7e5c-9a4a-12c5d7316c3e")
 	userID2 := uuid.MustParse("018f95a5-bc7d-7500-9b03-3e2a1c5d0f4a")
 
@@ -53,12 +53,12 @@ func NewUserRepository() *InMemoryUserRepository {
 	users[key{UserID: userID2, ChatID: ID7}] = &model.User{ID: userID2, ChatID: ID7, Role: model.Common}
 	users[key{UserID: userID2, ChatID: ID9}] = &model.User{ID: userID2, ChatID: ID9, Role: model.Common}
 
-	return &InMemoryUserRepository{
+	return &UserRepository{
 		users: users,
 	}
 }
 
-func (r *InMemoryUserRepository) GetChatUser(chatID uuid.UUID, userID uuid.UUID) (*model.User, error) {
+func (r *UserRepository) GetChatUser(chatID uuid.UUID, userID uuid.UUID) (*model.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -71,7 +71,7 @@ func (r *InMemoryUserRepository) GetChatUser(chatID uuid.UUID, userID uuid.UUID)
 	return user, nil
 }
 
-func (r *InMemoryUserRepository) GetChatUsers(chatID uuid.UUID) ([]*model.User, error) {
+func (r *UserRepository) GetChatUsers(chatID uuid.UUID) ([]*model.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -85,7 +85,7 @@ func (r *InMemoryUserRepository) GetChatUsers(chatID uuid.UUID) ([]*model.User, 
 	return result, nil
 }
 
-func (r *InMemoryUserRepository) GetUserChatIds(userID uuid.UUID) ([]uuid.UUID, error) {
+func (r *UserRepository) GetUserChatIds(userID uuid.UUID) ([]uuid.UUID, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -99,7 +99,7 @@ func (r *InMemoryUserRepository) GetUserChatIds(userID uuid.UUID) ([]uuid.UUID, 
 	return result, nil
 }
 
-func (r *InMemoryUserRepository) AddChatUsers(chatID uuid.UUID, userIDs []uuid.UUID) error {
+func (r *UserRepository) AddChatUsers(chatID uuid.UUID, userIDs []uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -118,7 +118,7 @@ func (r *InMemoryUserRepository) AddChatUsers(chatID uuid.UUID, userIDs []uuid.U
 	return nil
 }
 
-func (r *InMemoryUserRepository) DeleteChatUser(chatID uuid.UUID, userID uuid.UUID) error {
+func (r *UserRepository) DeleteChatUser(chatID uuid.UUID, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -128,7 +128,7 @@ func (r *InMemoryUserRepository) DeleteChatUser(chatID uuid.UUID, userID uuid.UU
 	return nil
 }
 
-func (r *InMemoryUserRepository) SetUserRole(chatID, userID uuid.UUID, newRole model.Role) error {
+func (r *UserRepository) SetUserRole(chatID, userID uuid.UUID, newRole model.Role) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -142,7 +142,7 @@ func (r *InMemoryUserRepository) SetUserRole(chatID, userID uuid.UUID, newRole m
 	return nil
 }
 
-func (r *InMemoryUserRepository) IsUserInChat(chatID, userID uuid.UUID) bool {
+func (r *UserRepository) IsUserInChat(chatID, userID uuid.UUID) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -155,4 +155,4 @@ func (r *InMemoryUserRepository) IsUserInChat(chatID, userID uuid.UUID) bool {
 	return false
 }
 
-var _ repository.UserRepository = (*InMemoryUserRepository)(nil)
+var _ repository.UserRepository = (*UserRepository)(nil)
