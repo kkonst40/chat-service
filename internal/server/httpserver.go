@@ -5,7 +5,7 @@ import (
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/middleware"
-	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/kkonst40/ichat/internal/repository/memory"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
 )
@@ -26,9 +26,9 @@ func NewHttpServer() *HttpServer {
 		panic(err)
 	}
 
-	userRepository := repository.NewInMemoryUserRepository()
-	chatRepository := repository.NewInMemoryChatRepository()
-	messageRepository := repository.NewInMemoryMessageRepository()
+	userRepository := memory.NewUserRepository()
+	chatRepository := memory.NewChatRepository()
+	messageRepository := memory.NewMessageRepository()
 
 	userService := service.NewUserService(userRepository)
 	chatService := service.NewChatService(chatRepository, userService)
