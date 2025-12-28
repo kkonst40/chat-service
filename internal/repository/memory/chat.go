@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -45,7 +46,7 @@ func NewChatRepository() *ChatRepository {
 	return &repo
 }
 
-func (r *ChatRepository) GetChat(chatID uuid.UUID) (*model.Chat, error) {
+func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -56,7 +57,7 @@ func (r *ChatRepository) GetChat(chatID uuid.UUID) (*model.Chat, error) {
 	return chat, nil
 }
 
-func (r *ChatRepository) GetChats(chatIDs []uuid.UUID) ([]*model.Chat, error) {
+func (r *ChatRepository) GetChats(ctx context.Context, chatIDs []uuid.UUID) ([]*model.Chat, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -67,7 +68,7 @@ func (r *ChatRepository) GetChats(chatIDs []uuid.UUID) ([]*model.Chat, error) {
 	return chats, nil
 }
 
-func (r *ChatRepository) CreateChat(chat *model.Chat) error {
+func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -78,7 +79,7 @@ func (r *ChatRepository) CreateChat(chat *model.Chat) error {
 	return nil
 }
 
-func (r *ChatRepository) UpdateChatName(chatID uuid.UUID, name string) error {
+func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -89,7 +90,7 @@ func (r *ChatRepository) UpdateChatName(chatID uuid.UUID, name string) error {
 	return nil
 }
 
-func (r *ChatRepository) DeleteChat(chatID uuid.UUID) error {
+func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

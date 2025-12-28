@@ -1,14 +1,16 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/model"
 )
 
 type ChatRepository interface {
-	GetChat(chatID uuid.UUID) (*model.Chat, error)
-	GetChats(chatIDs []uuid.UUID) ([]*model.Chat, error)
-	CreateChat(chat *model.Chat) error
-	UpdateChatName(chatID uuid.UUID, name string) error
-	DeleteChat(chatID uuid.UUID) error
+	GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error)
+	GetChats(ctx context.Context, chatIDs []uuid.UUID) ([]*model.Chat, error)
+	CreateChat(ctx context.Context, chat *model.Chat) error
+	UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error
+	DeleteChat(ctx context.Context, chatID uuid.UUID) error
 }

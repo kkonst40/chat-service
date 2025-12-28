@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -23,7 +24,7 @@ func NewMessageRepository() *MessageRepository {
 	return &repo
 }
 
-func (r *MessageRepository) GetMessage(msgID uuid.UUID) (*model.Message, error) {
+func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -34,7 +35,7 @@ func (r *MessageRepository) GetMessage(msgID uuid.UUID) (*model.Message, error) 
 	return message, nil
 }
 
-func (r *MessageRepository) GetChatMessages(chatID uuid.UUID) ([]*model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -47,7 +48,7 @@ func (r *MessageRepository) GetChatMessages(chatID uuid.UUID) ([]*model.Message,
 	return messages, nil
 }
 
-func (r *MessageRepository) CreateMessage(msg *model.Message) error {
+func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -58,7 +59,7 @@ func (r *MessageRepository) CreateMessage(msg *model.Message) error {
 	return nil
 }
 
-func (r *MessageRepository) UpdateMessage(msg *model.Message) error {
+func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -69,7 +70,7 @@ func (r *MessageRepository) UpdateMessage(msg *model.Message) error {
 	return nil
 }
 
-func (r *MessageRepository) DeleteMessage(msgID uuid.UUID) error {
+func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

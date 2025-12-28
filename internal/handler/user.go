@@ -23,6 +23,7 @@ func NewUserHandler(newUserService *service.UserService) *UserHandler {
 func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -32,7 +33,7 @@ func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 			return
 		}
 
-		users, err := h.userService.GetChatUsers(chatID, requesterID)
+		users, err := h.userService.GetChatUsers(ctx, chatID, requesterID)
 		if err != nil {
 			//
 			return
@@ -67,6 +68,7 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.AddChatUsersRequest
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -85,7 +87,7 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 			return
 		}
 
-		err = h.userService.AddChatUsers(chatID, req.UserIDs, requesterID)
+		err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
 		if err != nil {
 			//
 			return
@@ -97,6 +99,7 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.UpdateChatUserRoleRequest
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -136,7 +139,7 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 			return
 		}
 
-		err = h.userService.SetUserRole(chatID, userID, role, requesterID)
+		err = h.userService.SetUserRole(ctx, chatID, userID, role, requesterID)
 		if err != nil {
 			//
 			return
@@ -147,6 +150,7 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -164,7 +168,7 @@ func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
 			return
 		}
 
-		err = h.userService.DeleteChatUser(chatID, userID, requesterID)
+		err = h.userService.DeleteChatUser(ctx, chatID, userID, requesterID)
 		if err != nil {
 			//
 			return

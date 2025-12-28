@@ -26,6 +26,7 @@ func NewChatHandler(newChatService *service.ChatService) *ChatHandler {
 // ?????
 func (h *ChatHandler) GetChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := c.Request.Context()
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -34,7 +35,7 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 			return
 		}
 
-		chat, err := h.chatService.GetChat(chatID)
+		chat, err := h.chatService.GetChat(ctx, chatID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "Chat not found",
@@ -54,8 +55,9 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 func (h *ChatHandler) GetChats() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
-		chats, err := h.chatService.GetChats(requesterID)
+		chats, err := h.chatService.GetChats(ctx, requesterID)
 		if err != nil {
 			//
 			return
@@ -80,6 +82,7 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.CreateChatRequest
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -96,7 +99,7 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 			return
 		}
 
-		chat, err := h.chatService.CreateChat(req.Name, req.UserIDs, requesterID)
+		chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
 		if err != nil {
 			//
 			return
@@ -113,6 +116,7 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.UpdateChatNameRequest
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -137,7 +141,7 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 			return
 		}
 
-		err = h.chatService.UpdateChatName(chatID, req.Name, requesterID)
+		err = h.chatService.UpdateChatName(ctx, chatID, req.Name, requesterID)
 		if err != nil {
 			//
 			return
@@ -150,6 +154,7 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -159,7 +164,7 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 			return
 		}
 
-		err = h.chatService.DeleteChat(chatID, requesterID)
+		err = h.chatService.DeleteChat(ctx, chatID, requesterID)
 		if err != nil {
 			//
 			return

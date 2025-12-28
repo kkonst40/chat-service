@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 
@@ -11,17 +13,20 @@ import (
 )
 
 type Server struct {
+	ctx            context.Context
+	cancel         context.CancelFunc
 	rooms          map[uuid.UUID]*room
 	messageService *service.MessageService
 	mu             sync.Mutex
-	//chatService    *service.ChatService
 }
 
 func NewWsServer(chatService *service.ChatService, messageService *service.MessageService) *Server {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
+		ctx:            ctx,
+		cancel:         cancel,
 		rooms:          make(map[uuid.UUID]*room),
 		messageService: messageService,
-		//chatService:    chatService,
 	}
 }
 
@@ -39,14 +44,14 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUI
 	}
 
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	room, ok := s.rooms[chatId]
 	if !ok {
-		room = newRoom()
+		room = newRoom(s.ctx)
 		s.rooms[chatId] = room
 		go s.runRoom(chatId)
 	}
+	s.mu.Unlock()
 
 	room.addUser <- user
 
@@ -63,6 +68,9 @@ func (s *Server) runRoom(chatId uuid.UUID) error {
 
 	for {
 		select {
+		case <-room.ctx.Done():
+			return room.ctx.Err()
+
 		case user := <-room.addUser:
 			room.mutex.Lock()
 			room.users[user] = true
@@ -75,18 +83,22 @@ func (s *Server) runRoom(chatId uuid.UUID) error {
 				close(user.send)
 			}
 			if len(room.users) == 0 {
-				close(room.addUser)
-				close(room.removeUser)
-				close(room.broadcast)
+				room.cancel()
 				delete(s.rooms, chatId)
 				return nil
 			}
 			room.mutex.Unlock()
 
 		case message := <-room.broadcast:
-			_, err := s.messageService.CreateMessage(message.userID, chatId, string(message.data))
+			_, err := s.messageService.CreateMessage(
+				room.ctx,
+				message.userID,
+				chatId,
+				string(message.data),
+			)
 			if err != nil {
-				return fmt.Errorf("error saving message error")
+				log.Println("error saving message error")
+				continue
 			}
 			room.mutex.RLock()
 			for user := range room.users {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -22,21 +23,21 @@ func NewChatService(newChatRepository repository.ChatRepository, newUserService 
 	return &service
 }
 
-func (s *ChatService) GetChat(chatID uuid.UUID) (*model.Chat, error) {
-	chat, err := s.chatRepository.GetChat(chatID)
+func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
+	chat, err := s.chatRepository.GetChat(ctx, chatID)
 	return chat, err
 }
 
-func (s *ChatService) GetChats(userID uuid.UUID) ([]*model.Chat, error) {
-	chatIDs, err := s.userService.GetUserChatIds(userID)
+func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
+	chatIDs, err := s.userService.GetUserChatIds(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	chats, err := s.chatRepository.GetChats(chatIDs)
+	chats, err := s.chatRepository.GetChats(ctx, chatIDs)
 	return chats, err
 }
 
-func (s *ChatService) CreateChat(name string, userIDs []uuid.UUID, requesterID uuid.UUID) (*model.Chat, error) {
+func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uuid.UUID, requesterID uuid.UUID) (*model.Chat, error) {
 	newID, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -47,17 +48,17 @@ func (s *ChatService) CreateChat(name string, userIDs []uuid.UUID, requesterID u
 		Name: name,
 	}
 
-	err = s.chatRepository.CreateChat(chat)
+	err = s.chatRepository.CreateChat(ctx, chat)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.userService.InitialAddChatUser(chat.ID, requesterID)
+	err = s.userService.InitialAddChatUser(ctx, chat.ID, requesterID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.userService.AddChatUsers(chat.ID, userIDs, requesterID)
+	err = s.userService.AddChatUsers(ctx, chat.ID, userIDs, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -65,26 +66,26 @@ func (s *ChatService) CreateChat(name string, userIDs []uuid.UUID, requesterID u
 	return chat, nil
 }
 
-func (s *ChatService) UpdateChatName(chatID uuid.UUID, name string, requesterID uuid.UUID) error {
-	if !s.hasPermission(chatID, requesterID, model.Admin) {
+func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
+	if !s.hasPermission(ctx, chatID, requesterID, model.Admin) {
 		return fmt.Errorf("user has no permission")
 	}
 
-	err := s.chatRepository.UpdateChatName(chatID, name)
+	err := s.chatRepository.UpdateChatName(ctx, chatID, name)
 	return err
 }
 
-func (s *ChatService) DeleteChat(chatID uuid.UUID, requesterID uuid.UUID) error {
-	if !s.hasPermission(chatID, requesterID, model.Admin) {
+func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) error {
+	if !s.hasPermission(ctx, chatID, requesterID, model.Admin) {
 		return fmt.Errorf("user has no permission")
 	}
 
-	err := s.chatRepository.DeleteChat(chatID)
+	err := s.chatRepository.DeleteChat(ctx, chatID)
 	return err
 }
 
-func (s *ChatService) hasPermission(chatID, requesterID uuid.UUID, role model.Role) bool {
-	requester, err := s.userService.GetChatUser(chatID, requesterID)
+func (s *ChatService) hasPermission(ctx context.Context, chatID, requesterID uuid.UUID, role model.Role) bool {
+	requester, err := s.userService.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
 		return false
 	}

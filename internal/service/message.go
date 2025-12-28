@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -29,18 +30,18 @@ func NewMessageService(
 	return &service
 }
 
-func (s *MessageService) GetChatMessages(chatID uuid.UUID, requesterID uuid.UUID) ([]*model.Message, error) {
-	if _, err := s.userService.GetChatUser(chatID, requesterID); err != nil {
+func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.Message, error) {
+	if _, err := s.userService.GetChatUser(ctx, chatID, requesterID); err != nil {
 		return nil, fmt.Errorf("user is not in the chat")
 	}
-	if _, err := s.chatService.GetChat(chatID); err != nil {
+	if _, err := s.chatService.GetChat(ctx, chatID); err != nil {
 		return nil, err
 	}
-	messages, err := s.messageRepository.GetChatMessages(chatID)
+	messages, err := s.messageRepository.GetChatMessages(ctx, chatID)
 	return messages, err
 }
 
-func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*model.Message, error) {
+func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {
 	newID, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -54,12 +55,12 @@ func (s *MessageService) CreateMessage(userID, chatID uuid.UUID, text string) (*
 		CreatedAt: time.Now(),
 	}
 
-	err = s.messageRepository.CreateMessage(message)
+	err = s.messageRepository.CreateMessage(ctx, message)
 	return message, err
 }
 
-func (s *MessageService) UpdateMessage(msgID uuid.UUID, text string, requesterID uuid.UUID) error {
-	message, err := s.messageRepository.GetMessage(msgID)
+func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, text string, requesterID uuid.UUID) error {
+	message, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
 		return err
 	}
@@ -76,26 +77,26 @@ func (s *MessageService) UpdateMessage(msgID uuid.UUID, text string, requesterID
 		CreatedAt: message.CreatedAt,
 	}
 
-	err = s.messageRepository.UpdateMessage(newMessage)
+	err = s.messageRepository.UpdateMessage(ctx, newMessage)
 	return err
 }
 
-func (s *MessageService) DeleteMessage(msgID uuid.UUID, requesterID uuid.UUID) error {
-	message, err := s.messageRepository.GetMessage(msgID)
+func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, requesterID uuid.UUID) error {
+	message, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
 		return err
 	}
 
 	if message.UserID == requesterID {
-		err = s.messageRepository.DeleteMessage(msgID)
+		err = s.messageRepository.DeleteMessage(ctx, msgID)
 		return err
 	}
 
-	sender, err := s.userService.GetChatUser(message.ChatID, message.UserID)
+	sender, err := s.userService.GetChatUser(ctx, message.ChatID, message.UserID)
 	if err != nil {
 		return err
 	}
-	requester, err := s.userService.GetChatUser(message.ChatID, requesterID)
+	requester, err := s.userService.GetChatUser(ctx, message.ChatID, requesterID)
 	if err != nil {
 		return err
 	}

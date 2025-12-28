@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -58,7 +59,7 @@ func NewUserRepository() *UserRepository {
 	}
 }
 
-func (r *UserRepository) GetChatUser(chatID uuid.UUID, userID uuid.UUID) (*model.User, error) {
+func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*model.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -71,7 +72,7 @@ func (r *UserRepository) GetChatUser(chatID uuid.UUID, userID uuid.UUID) (*model
 	return user, nil
 }
 
-func (r *UserRepository) GetChatUsers(chatID uuid.UUID) ([]*model.User, error) {
+func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]*model.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -85,7 +86,7 @@ func (r *UserRepository) GetChatUsers(chatID uuid.UUID) ([]*model.User, error) {
 	return result, nil
 }
 
-func (r *UserRepository) GetUserChatIds(userID uuid.UUID) ([]uuid.UUID, error) {
+func (r *UserRepository) GetUserChatIds(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -99,7 +100,7 @@ func (r *UserRepository) GetUserChatIds(userID uuid.UUID) ([]uuid.UUID, error) {
 	return result, nil
 }
 
-func (r *UserRepository) AddChatUsers(chatID uuid.UUID, userIDs []uuid.UUID) error {
+func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -118,7 +119,7 @@ func (r *UserRepository) AddChatUsers(chatID uuid.UUID, userIDs []uuid.UUID) err
 	return nil
 }
 
-func (r *UserRepository) DeleteChatUser(chatID uuid.UUID, userID uuid.UUID) error {
+func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -128,7 +129,7 @@ func (r *UserRepository) DeleteChatUser(chatID uuid.UUID, userID uuid.UUID) erro
 	return nil
 }
 
-func (r *UserRepository) SetUserRole(chatID, userID uuid.UUID, newRole model.Role) error {
+func (r *UserRepository) SetUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -142,7 +143,7 @@ func (r *UserRepository) SetUserRole(chatID, userID uuid.UUID, newRole model.Rol
 	return nil
 }
 
-func (r *UserRepository) IsUserInChat(chatID, userID uuid.UUID) bool {
+func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

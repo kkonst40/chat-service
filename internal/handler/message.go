@@ -24,6 +24,7 @@ func NewMessageHandler(newMessageService *service.MessageService) *MessageHandle
 func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -33,7 +34,7 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 			return
 		}
 
-		messages, err := h.messageService.GetChatMessages(chatID, requesterID)
+		messages, err := h.messageService.GetChatMessages(ctx, chatID, requesterID)
 		if err != nil {
 			//
 			return
