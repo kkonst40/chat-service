@@ -1,10 +1,20 @@
 package main
 
 import (
-	"github.com/kkonst40/ichat/internal/server"
+	"log"
+
+	"github.com/kkonst40/ichat/internal/app"
+	"github.com/kkonst40/ichat/internal/config"
 )
 
 func main() {
-	httpServer := server.NewHttpServer()
-	httpServer.Run()
+	cfg := config.MustLoad()
+	application, err := app.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := application.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

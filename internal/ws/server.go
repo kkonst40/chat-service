@@ -115,3 +115,14 @@ func (s *Server) runRoom(chatId uuid.UUID) error {
 		}
 	}
 }
+
+func (s *Server) Shutdown() {
+	s.cancel()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, room := range s.rooms {
+		room.cancel()
+	}
+}

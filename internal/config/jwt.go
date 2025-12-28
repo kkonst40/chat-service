@@ -13,18 +13,18 @@ type JWTConfig struct {
 	CookieName string `json:"cookieName"`
 }
 
-func LoadJwtConfig() (*JWTConfig, error) {
+func MustLoad() *JWTConfig {
 	dir, err := util.GetCurrentDir()
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	var jwtConfig JWTConfig
 	jwtPath := filepath.Join(dir, "config", "jwt_config.json")
 	err = util.ReadJson(jwtPath, &jwtConfig)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return &jwtConfig, nil
+	return &jwtConfig
 }

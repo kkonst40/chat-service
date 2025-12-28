@@ -27,6 +27,7 @@ func NewChatHandler(newChatService *service.ChatService) *ChatHandler {
 func (h *ChatHandler) GetChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
