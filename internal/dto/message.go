@@ -17,7 +17,3 @@ type GetMessageResponse struct {
 type GetMessagesResponse struct {
 	Messages []GetMessageResponse `json:"messages"`
 }
-
-type AddChatUsersRequest struct {
-	UserIDs []uuid.UUID `json:"users" binding:"required"`
-}

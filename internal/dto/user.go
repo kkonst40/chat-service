@@ -15,3 +15,7 @@ type GetChatUsersResponse struct {
 type UpdateChatUserRoleRequest struct {
 	Role string `json:"role" binding:"required"`
 }
+
+type AddChatUsersRequest struct {
+	UserIDs []uuid.UUID `json:"usersIds" binding:"required"`
+}

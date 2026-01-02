@@ -13,7 +13,7 @@ func NewRouter(
 	userHandler *handler.UserHandler,
 	messageHandler *handler.MessageHandler,
 	wsServer *ws.Server,
-	cfg *config.JWTConfig,
+	cfg *config.Config,
 ) *gin.Engine {
 
 	gin.SetMode(gin.ReleaseMode)
@@ -21,8 +21,8 @@ func NewRouter(
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(gin.Logger())
-	router.Use(middleware.Dummy())
-	router.Use(middleware.Auth(cfg))
+	router.Use(middleware.DummyAuthH())
+	//router.Use(middleware.Auth(cfg))
 
 	router.GET("/chats", chatHandler.GetChats())
 	router.POST("/chats", chatHandler.CreateChat())

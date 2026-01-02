@@ -17,9 +17,9 @@ type CustomClaims struct {
 	jwt.StandardClaims
 }
 
-func Auth(config *config.JWTConfig) gin.HandlerFunc {
+func Auth(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, err := c.Cookie("pechenye")
+		tokenString, err := c.Cookie(cfg.JWT.CookieName)
 		if err != nil {
 			c.Status(http.StatusUnauthorized)
 			c.Abort()
@@ -30,7 +30,7 @@ func Auth(config *config.JWTConfig) gin.HandlerFunc {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return []byte(config.SecretKey), nil
+			return []byte(cfg.JWT.SecretKey), nil
 		})
 
 		if err != nil {
@@ -40,8 +40,8 @@ func Auth(config *config.JWTConfig) gin.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
-			if claims.Issuer != config.Issuer &&
-				claims.Audience != config.Audience &&
+			if claims.Issuer != cfg.JWT.Issuer &&
+				claims.Audience != cfg.JWT.Audience &&
 				claims.ExpiresAt > time.Now().Unix() {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 				c.Abort()
