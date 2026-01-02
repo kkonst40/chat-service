@@ -21,8 +21,8 @@ func NewRouter(
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(gin.Logger())
-	router.Use(middleware.DummyMiddleware())
-	router.Use(middleware.AuthMiddleware(cfg))
+	router.Use(middleware.Dummy())
+	router.Use(middleware.Auth(cfg))
 
 	router.GET("/chats", chatHandler.GetChats())
 	router.POST("/chats", chatHandler.CreateChat())

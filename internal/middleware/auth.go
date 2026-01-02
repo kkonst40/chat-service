@@ -17,7 +17,7 @@ type CustomClaims struct {
 	jwt.StandardClaims
 }
 
-func AuthMiddleware(config *config.JWTConfig) gin.HandlerFunc {
+func Auth(config *config.JWTConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString, err := c.Cookie("pechenye")
 		if err != nil {

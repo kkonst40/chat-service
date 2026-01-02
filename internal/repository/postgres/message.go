@@ -14,7 +14,9 @@ type MessageRepository struct {
 }
 
 func NewMessageRepository(db *sql.DB) *MessageRepository {
-	return &MessageRepository{db: db}
+	return &MessageRepository{
+		db: db,
+	}
 }
 
 func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*model.Message, error) {
@@ -25,7 +27,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	`
 
 	var msg model.Message
-	err := r.db.QueryRow(query, msgID).Scan(
+	err := r.db.QueryRowContext(ctx, query, msgID).Scan(
 		&msg.ID,
 		&msg.UserID,
 		&msg.ChatID,
@@ -51,7 +53,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 		ORDER BY created_at ASC
 	`
 
-	rows, err := r.db.Query(query, chatID)
+	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +89,8 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
-	_, err := r.db.Exec(
+	_, err := r.db.ExecContext(
+		ctx,
 		query,
 		msg.ID,
 		msg.UserID,
@@ -106,7 +109,7 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 		WHERE id = $2
 	`
 
-	_, err := r.db.Exec(query, msg.Text, msg.ID)
+	_, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
 	return err
 }
 
@@ -116,7 +119,7 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 		WHERE id = $1
 	`
 
-	_, err := r.db.Exec(query, msgID)
+	_, err := r.db.ExecContext(ctx, query, msgID)
 	return err
 }
 

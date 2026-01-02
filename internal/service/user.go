@@ -24,15 +24,11 @@ func (s *UserService) GetChatUser(ctx context.Context, chatID uuid.UUID, userID 
 }
 
 func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.User, error) {
-	if _, err := s.GetChatUser(ctx, chatID, requesterID); err != nil {
+	if user, err := s.GetChatUser(ctx, chatID, requesterID); user == nil && err == nil {
 		return nil, fmt.Errorf("user is not in the chat")
 	}
 
 	return s.userRepository.GetChatUsers(ctx, chatID)
-}
-
-func (s *UserService) GetUserChatIds(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	return s.userRepository.GetUserChatIds(ctx, userID)
 }
 
 func (s *UserService) InitialAddChatUser(ctx context.Context, chatID, userID uuid.UUID) error {
@@ -41,11 +37,11 @@ func (s *UserService) InitialAddChatUser(ctx context.Context, chatID, userID uui
 		return err
 	}
 
-	return s.userRepository.SetUserRole(ctx, chatID, userID, model.Admin)
+	return s.userRepository.UpdateUserRole(ctx, chatID, userID, model.Admin)
 }
 
 func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIds []uuid.UUID, requesterID uuid.UUID) error {
-	if _, err := s.GetChatUser(ctx, chatID, requesterID); err != nil {
+	if user, err := s.GetChatUser(ctx, chatID, requesterID); user == nil && err == nil {
 		return fmt.Errorf("user is not in the chat")
 	}
 
@@ -63,7 +59,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 		return err
 	}
 
-	if requester.Role > user.Role || requesterID == userID {
+	if requester.Role == model.Admin && user.Role == model.Common || requesterID == userID {
 		return s.userRepository.DeleteChatUser(ctx, chatID, userID)
 	} else {
 		return fmt.Errorf("user has no permission")
@@ -80,8 +76,8 @@ func (s *UserService) SetUserRole(ctx context.Context, chatID, userID uuid.UUID,
 		return err
 	}
 
-	if requester.Role <= user.Role {
+	if !(requester.Role == model.Admin && user.Role == model.Common) {
 		return fmt.Errorf("user has no permission")
 	}
-	return s.userRepository.SetUserRole(ctx, chatID, userID, newRole)
+	return s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
 }

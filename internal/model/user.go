@@ -8,9 +8,9 @@ type User struct {
 	Role   `json:"role"`
 }
 
-type Role int
+type Role string
 
 const (
-	Common Role = iota
-	Admin
+	Common Role = "common"
+	Admin  Role = "admin"
 )

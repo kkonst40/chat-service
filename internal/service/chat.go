@@ -28,12 +28,8 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Cha
 	return chat, err
 }
 
-func (s *ChatService) GetChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
-	chatIDs, err := s.userService.GetUserChatIds(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	chats, err := s.chatRepository.GetChats(ctx, chatIDs)
+func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
+	chats, err := s.chatRepository.GetUserChats(ctx, userID)
 	return chats, err
 }
 

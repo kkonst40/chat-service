@@ -58,7 +58,7 @@ func (h *ChatHandler) GetChats() gin.HandlerFunc {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
 		ctx := c.Request.Context()
 
-		chats, err := h.chatService.GetChats(ctx, requesterID)
+		chats, err := h.chatService.GetUserChats(ctx, requesterID)
 		if err != nil {
 			//
 			return
