@@ -94,4 +94,16 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	return nil
 }
 
+func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
+	r.db.mu.RLock()
+	defer r.db.mu.RUnlock()
+
+	key := key{UserID: userID, ChatID: chatID}
+	if _, ok := r.db.users[key]; ok {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 var _ repository.UserRepository = (*UserRepository)(nil)

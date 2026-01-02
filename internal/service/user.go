@@ -24,24 +24,15 @@ func (s *UserService) GetChatUser(ctx context.Context, chatID uuid.UUID, userID 
 }
 
 func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.User, error) {
-	if user, err := s.GetChatUser(ctx, chatID, requesterID); user == nil && err == nil {
+	if !s.isUserInChat(ctx, chatID, requesterID) {
 		return nil, fmt.Errorf("user is not in the chat")
 	}
 
 	return s.userRepository.GetChatUsers(ctx, chatID)
 }
 
-func (s *UserService) InitialAddChatUser(ctx context.Context, chatID, userID uuid.UUID) error {
-	err := s.userRepository.AddChatUsers(ctx, chatID, []uuid.UUID{userID})
-	if err != nil {
-		return err
-	}
-
-	return s.userRepository.UpdateUserRole(ctx, chatID, userID, model.Admin)
-}
-
 func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIds []uuid.UUID, requesterID uuid.UUID) error {
-	if user, err := s.GetChatUser(ctx, chatID, requesterID); user == nil && err == nil {
+	if !s.isUserInChat(ctx, chatID, requesterID) {
 		return fmt.Errorf("user is not in the chat")
 	}
 
@@ -49,6 +40,10 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userId
 }
 
 func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID, requesterID uuid.UUID) error {
+	if userID == requesterID {
+		return s.userRepository.DeleteChatUser(ctx, chatID, userID)
+	}
+
 	requester, err := s.userRepository.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
 		return err
@@ -59,11 +54,11 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 		return err
 	}
 
-	if requester.Role == model.Admin && user.Role == model.Common || requesterID == userID {
-		return s.userRepository.DeleteChatUser(ctx, chatID, userID)
-	} else {
+	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
 		return fmt.Errorf("user has no permission")
 	}
+
+	return s.userRepository.DeleteChatUser(ctx, chatID, userID)
 }
 
 func (s *UserService) SetUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role, requesterID uuid.UUID) error {
@@ -76,8 +71,31 @@ func (s *UserService) SetUserRole(ctx context.Context, chatID, userID uuid.UUID,
 		return err
 	}
 
-	if !(requester.Role == model.Admin && user.Role == model.Common) {
+	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
 		return fmt.Errorf("user has no permission")
 	}
+
 	return s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
+}
+
+func (s *UserService) hasPermission(ctx context.Context, chatID, requesterID uuid.UUID, role model.Role) bool {
+	requester, err := s.GetChatUser(ctx, chatID, requesterID)
+	if err != nil {
+		return false
+	}
+
+	if model.UserPriority[requester.Role] < model.UserPriority[role] {
+		return false
+	}
+
+	return true
+}
+
+func (s *UserService) isUserInChat(ctx context.Context, chatID, userID uuid.UUID) bool {
+	result, err := s.userRepository.IsUserInChat(ctx, chatID, userID)
+	if err != nil {
+		return false
+	}
+
+	return result
 }

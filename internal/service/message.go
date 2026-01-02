@@ -31,17 +31,21 @@ func NewMessageService(
 }
 
 func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.Message, error) {
-	if _, err := s.userService.GetChatUser(ctx, chatID, requesterID); err != nil {
+	if !s.chatService.doesChatExist(ctx, chatID) {
+		return nil, fmt.Errorf("chat does not exist")
+	}
+	if !s.userService.isUserInChat(ctx, chatID, requesterID) {
 		return nil, fmt.Errorf("user is not in the chat")
 	}
-	if _, err := s.chatService.GetChat(ctx, chatID); err != nil {
-		return nil, err
-	}
-	messages, err := s.messageRepository.GetChatMessages(ctx, chatID)
-	return messages, err
+
+	return s.messageRepository.GetChatMessages(ctx, chatID)
 }
 
 func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {
+	if !s.chatService.doesChatExist(ctx, chatID) {
+		return nil, fmt.Errorf("chat does not exist")
+	}
+
 	newID, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -55,8 +59,11 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 		CreatedAt: time.Now(),
 	}
 
-	err = s.messageRepository.CreateMessage(ctx, message)
-	return message, err
+	if err = s.messageRepository.CreateMessage(ctx, message); err != nil {
+		return nil, err
+	}
+
+	return message, nil
 }
 
 func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, text string, requesterID uuid.UUID) error {
@@ -77,8 +84,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 		CreatedAt: message.CreatedAt,
 	}
 
-	err = s.messageRepository.UpdateMessage(ctx, newMessage)
-	return err
+	return s.messageRepository.UpdateMessage(ctx, newMessage)
 }
 
 func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, requesterID uuid.UUID) error {
@@ -101,7 +107,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 		return err
 	}
 
-	if requester.Role <= sender.Role {
+	if !(model.UserPriority[requester.Role] > model.UserPriority[sender.Role]) {
 		return fmt.Errorf("user has no permission")
 	}
 

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/model"
@@ -33,7 +34,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, fmt.Errorf("chat not found")
 	}
 	if err != nil {
 		return nil, err
@@ -78,20 +79,34 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 	return chats, nil
 }
 
-func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat) error {
-	const query = `
-		INSERT INTO chats (id, name)
-		VALUES ($1, $2)
+func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
+	const chatQuery = `
+	INSERT INTO chats (id, name)
+	VALUES ($1, $2)
 	`
+	const userQuery = `
+	INSERT INTO users (id, chat_id, role)
+	VALUES ($1, $2, $3)
+	`
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
 
-	_, err := r.db.ExecContext(
-		ctx,
-		query,
-		chat.ID,
-		chat.Name,
-	)
+	defer tx.Rollback()
 
-	return err
+	if _, err = tx.ExecContext(ctx, chatQuery, chat.ID, chat.Name); err != nil {
+		return fmt.Errorf("create chat: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, userQuery, creatorID, chat.ID, model.Owner); err != nil {
+		return fmt.Errorf("create owner: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error {
@@ -113,6 +128,28 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 
 	_, err := r.db.ExecContext(ctx, query, chatID)
 	return err
+}
+
+func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
+	const query = `
+		SELECT EXISTS(
+			SELECT 1
+			FROM chats
+			WHERE id = $1
+		)
+	`
+
+	var exists bool
+
+	err := r.db.QueryRowContext(ctx, query, chatID).Scan(
+		&exists,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }
 
 var _ repository.ChatRepository = (*ChatRepository)(nil)

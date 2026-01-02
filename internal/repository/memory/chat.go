@@ -45,7 +45,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 	return chats, nil
 }
 
-func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat) error {
+func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
@@ -76,6 +76,17 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 	delete(r.db.chats, chatID)
 
 	return nil
+}
+
+func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
+	r.db.mu.RLock()
+	defer r.db.mu.RUnlock()
+
+	if _, ok := r.db.chats[chatID]; ok {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 var _ repository.ChatRepository = (*ChatRepository)(nil)

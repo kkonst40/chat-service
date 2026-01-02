@@ -24,13 +24,11 @@ func NewChatService(newChatRepository repository.ChatRepository, newUserService 
 }
 
 func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
-	chat, err := s.chatRepository.GetChat(ctx, chatID)
-	return chat, err
+	return s.chatRepository.GetChat(ctx, chatID)
 }
 
 func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
-	chats, err := s.chatRepository.GetUserChats(ctx, userID)
-	return chats, err
+	return s.chatRepository.GetUserChats(ctx, userID)
 }
 
 func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uuid.UUID, requesterID uuid.UUID) (*model.Chat, error) {
@@ -44,12 +42,7 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 		Name: name,
 	}
 
-	err = s.chatRepository.CreateChat(ctx, chat)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.userService.InitialAddChatUser(ctx, chat.ID, requesterID)
+	err = s.chatRepository.CreateChat(ctx, chat, requesterID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +56,7 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 }
 
 func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
-	if !s.hasPermission(ctx, chatID, requesterID, model.Admin) {
+	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Admin) {
 		return fmt.Errorf("user has no permission")
 	}
 
@@ -72,7 +65,7 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 }
 
 func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) error {
-	if !s.hasPermission(ctx, chatID, requesterID, model.Admin) {
+	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Owner) {
 		return fmt.Errorf("user has no permission")
 	}
 
@@ -80,15 +73,11 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	return err
 }
 
-func (s *ChatService) hasPermission(ctx context.Context, chatID, requesterID uuid.UUID, role model.Role) bool {
-	requester, err := s.userService.GetChatUser(ctx, chatID, requesterID)
+func (s *ChatService) doesChatExist(ctx context.Context, chatID uuid.UUID) bool {
+	exists, err := s.chatRepository.DoesChatExist(ctx, chatID)
 	if err != nil {
 		return false
 	}
 
-	if requester.Role < role {
-		return false
-	}
-
-	return true
+	return exists
 }

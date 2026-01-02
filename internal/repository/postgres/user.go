@@ -123,4 +123,26 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	return err
 }
 
+func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
+	const query = `
+		SELECT EXISTS(
+			SELECT 1
+			FROM users
+			WHERE id = $1 AND chat_id = $2
+		)
+	`
+
+	var exists bool
+
+	err := r.db.QueryRowContext(ctx, query, userID, chatID).Scan(
+		&exists,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 var _ repository.UserRepository = (*UserRepository)(nil)
