@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 type DBConfig struct {
@@ -77,7 +78,13 @@ func loadConfigEnv() (*Config, error) {
 }
 
 func loadConfigJSON() (*Config, error) {
-	file, err := os.Open("config.json")
+	exePath, err := os.Executable()
+	if err != nil {
+		return nil, err
+	}
+
+	currDir := filepath.Dir(exePath)
+	file, err := os.Open(filepath.Join(currDir, "config.json"))
 	if err != nil {
 		return nil, fmt.Errorf("json config file oppening error: %v", err)
 	}
