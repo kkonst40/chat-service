@@ -28,9 +28,6 @@ func New(cfg *config.Config) (*App, error) {
 		cfg.DB.Host,
 		cfg.DB.DBName,
 	)
-	//if strings.HasPrefix(cfg.DB.Host, "localhost") {
-	//	dbUrl += "?sslmode=disabled"
-	//}
 
 	db, err := sql.Open("pgx", dbUrl)
 	if err != nil {
