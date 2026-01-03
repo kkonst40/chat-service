@@ -32,3 +32,4 @@ config*.json
 # .idea/
 .vscode/
 /static
+WARP.md

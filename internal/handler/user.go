@@ -44,19 +44,10 @@ func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 		}
 
 		for _, user := range users {
-			var roleStr string
-			switch user.Role {
-			case model.Admin:
-				roleStr = "admin"
-			case model.Common:
-				roleStr = "common"
-			default:
-				roleStr = "undefined"
-			}
 			resp.Users = append(resp.Users, dto.GetUserResponse{
 				ID:     user.ID,
 				ChatID: user.ChatID,
-				Role:   roleStr,
+				Role:   string(user.Role),
 			})
 		}
 
@@ -128,10 +119,12 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 
 		var role model.Role
 		switch req.Role {
-		case "admin":
-			role = model.Admin
 		case "common":
 			role = model.Common
+		case "admin":
+			role = model.Admin
+		case "owner":
+			role = model.Owner
 		default:
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid role name",
