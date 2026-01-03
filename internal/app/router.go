@@ -1,4 +1,4 @@
-package httpserver
+package app
 
 import (
 	"time"
@@ -17,14 +17,12 @@ func NewRouter(
 	wsServer *ws.Server,
 	cfg *config.Config,
 ) *gin.Engine {
-
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(gin.Logger())
 	router.Use(middleware.DummyAuthH())
-	//router.Use(middleware.Auth(cfg))
 
 	router.GET("/chats", middleware.CtxTimeout(2*time.Second), chatHandler.GetChats())
 	router.POST("/chats", middleware.CtxTimeout(3*time.Second), chatHandler.CreateChat())
@@ -38,7 +36,7 @@ func NewRouter(
 	router.DELETE("/chatusers/:chatId/:userId", middleware.CtxTimeout(2*time.Second), userHandler.DeleteChatUser())
 
 	router.GET("/chatmessages/:chatId", middleware.CtxTimeout(2*time.Second), messageHandler.GetChatMessages())
-	router.GET("/connect/:chatId", middleware.CtxTimeout(2*time.Second), chatHandler.ConnectToChat(wsServer))
+	router.GET("/connect/:chatId", chatHandler.ConnectToChat(wsServer))
 
 	return router
 }

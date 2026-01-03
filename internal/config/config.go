@@ -77,7 +77,7 @@ func loadConfigEnv() (*Config, error) {
 }
 
 func loadConfigJSON() (*Config, error) {
-	file, err := os.Open("config_dev.json")
+	file, err := os.Open("config.json")
 	if err != nil {
 		return nil, fmt.Errorf("json config file oppening error: %v", err)
 	}
