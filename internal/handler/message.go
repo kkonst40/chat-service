@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dto"
+	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -39,6 +40,8 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("chat messages retrieved", "chatID", chatID)
 
 		resp := dto.GetMessagesResponse{
 			Messages: make([]dto.GetMessageResponse, 0, len(messages)),

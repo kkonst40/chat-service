@@ -4,14 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
 type ChatRepository struct {
-	db *sql.DB
+	db  *sql.DB
+	log *slog.Logger
 }
 
 func NewChatRepository(db *sql.DB) *ChatRepository {
@@ -21,11 +24,14 @@ func NewChatRepository(db *sql.DB) *ChatRepository {
 }
 
 func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
+	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, name
 		FROM chats
 		WHERE id = $1
 	`
+
+	log.Debug("getting chat from DB", "chatID", chatID)
 
 	var chat model.Chat
 	err := r.db.QueryRowContext(ctx, query, chatID).Scan(
@@ -44,6 +50,8 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 }
 
 func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
+	log := logger.FromContext(ctx)
+
 	const query = `
 		SELECT c.id, c.name
 		FROM users u
@@ -51,6 +59,8 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 		ON u.chat_id = c.id
 		WHERE u.id = $1
 	`
+
+	log.Debug("getting user chats from DB", "userID", userID)
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -80,6 +90,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 }
 
 func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
+	log := logger.FromContext(ctx)
 	const chatQuery = `
 	INSERT INTO chats (id, name)
 	VALUES ($1, $2)
@@ -88,6 +99,9 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 	INSERT INTO users (id, chat_id, role)
 	VALUES ($1, $2, $3)
 	`
+
+	log.Debug("creating new chat with creator user in DB", "chatID", chat.ID, "userID", creatorID)
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -110,27 +124,34 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 }
 
 func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error {
+	log := logger.FromContext(ctx)
 	const query = `
 		UPDATE chats
 		SET name = $1
 		WHERE id = $2
 	`
 
+	log.Debug("updating name of the chat in DB", "chatID", chatID, "new_name", name)
+
 	_, err := r.db.ExecContext(ctx, query, name, chatID)
 	return err
 }
 
 func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
+	log := logger.FromContext(ctx)
 	const query = `
 		DELETE FROM chats
 		WHERE id = $1
 	`
+
+	log.Debug("deleting the chat from DB", "chatID", chatID)
 
 	_, err := r.db.ExecContext(ctx, query, chatID)
 	return err
 }
 
 func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
+	log := logger.FromContext(ctx)
 	const query = `
 		SELECT EXISTS(
 			SELECT 1
@@ -138,6 +159,8 @@ func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (b
 			WHERE id = $1
 		)
 	`
+
+	log.Debug("checking if chat exists in DB", "chatID", chatID)
 
 	var exists bool
 

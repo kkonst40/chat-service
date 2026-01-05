@@ -21,22 +21,37 @@ func NewRouter(
 
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.Use(gin.Logger())
-	router.Use(middleware.DummyAuthH())
+	router.Use(middleware.Logger())
+	router.Use(middleware.Error())
 
-	router.GET("/chats", middleware.CtxTimeout(2*time.Second), chatHandler.GetChats())
-	router.POST("/chats", middleware.CtxTimeout(3*time.Second), chatHandler.CreateChat())
-	router.GET("/chats/:chatId", middleware.CtxTimeout(2*time.Second), chatHandler.GetChat())
-	router.PUT("/chats/:chatId", middleware.CtxTimeout(3*time.Second), chatHandler.UpdateChatName())
-	router.DELETE("/chats/:chatId", middleware.CtxTimeout(3*time.Second), chatHandler.DeleteChat())
+	router.GET("/connect/:chatId", middleware.DummyAuthH(), chatHandler.ConnectToChat(wsServer))
 
-	router.GET("/chatusers/:chatId", middleware.CtxTimeout(2*time.Second), userHandler.GetChatUsers())
-	router.POST("/chatusers/:chatId", middleware.CtxTimeout(3*time.Second), userHandler.AddChatUsers())
-	router.PUT("/chatusers/:chatId/:userId", middleware.CtxTimeout(2*time.Second), userHandler.SetChatUserRole())
-	router.DELETE("/chatusers/:chatId/:userId", middleware.CtxTimeout(2*time.Second), userHandler.DeleteChatUser())
+	fast := router.Group("/")
+	fast.Use(middleware.CtxTimeout(2 * time.Second))
+	{
+		fast.Use(middleware.DummyAuthH())
 
-	router.GET("/chatmessages/:chatId", middleware.CtxTimeout(2*time.Second), messageHandler.GetChatMessages())
-	router.GET("/connect/:chatId", chatHandler.ConnectToChat(wsServer))
+		fast.GET("/chats", chatHandler.GetChats())
+		fast.GET("/chats/:chatId", chatHandler.GetChat())
+
+		fast.GET("/chatusers/:chatId", userHandler.GetChatUsers())
+		fast.PUT("/chatusers/:chatId/:userId", userHandler.UpdateChatUserRole())
+		fast.DELETE("/chatusers/:chatId/:userId", userHandler.DeleteChatUser())
+
+		fast.GET("/chatmessages/:chatId", messageHandler.GetChatMessages())
+	}
+
+	slow := router.Group("/")
+	slow.Use(middleware.CtxTimeout(3 * time.Second))
+	{
+		slow.Use(middleware.DummyAuthH())
+
+		slow.POST("/chats", chatHandler.CreateChat())
+		slow.PUT("/chats/:chatId", chatHandler.UpdateChatName())
+		slow.DELETE("/chats/:chatId", chatHandler.DeleteChat())
+
+		slow.POST("/chatusers/:chatId", userHandler.AddChatUsers())
+	}
 
 	return router
 }

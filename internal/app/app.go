@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -42,25 +42,25 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("Failed to connect to the database: %v", err)
 	}
 
-	log.Println("Successful connection to the database")
+	slog.Info("Successful connection to the database")
 
 	userRepo := postgres.NewUserRepository(db)
 	chatRepo := postgres.NewChatRepository(db)
 	messageRepo := postgres.NewMessageRepository(db)
 
-	log.Println("Repositories are initialized")
+	slog.Info("Repositories are initialized")
 
 	userService := service.NewUserService(userRepo)
 	chatService := service.NewChatService(chatRepo, userService)
 	messageService := service.NewMessageService(messageRepo, chatService, userService)
 
-	log.Println("Services are initialized")
+	slog.Info("Services are initialized")
 
 	userHandler := handler.NewUserHandler(userService)
 	chatHandler := handler.NewChatHandler(chatService)
 	messageHandler := handler.NewMessageHandler(messageService)
 
-	log.Println("Handlers are initialized")
+	slog.Info("Handlers are initialized")
 
 	wsServer := ws.NewWsServer(chatService, messageService)
 
@@ -89,13 +89,14 @@ func (a *App) Run() error {
 
 	go func() {
 		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			slog.Error(err.Error())
+			os.Exit(1)
 		}
 	}()
-	log.Println("Server started on :8080")
+	slog.Info("Server started on :8080")
 
 	<-quit
-	log.Println("Shutting down server...")
+	slog.Info("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -107,6 +108,6 @@ func (a *App) Run() error {
 		return fmt.Errorf("DB close error: %v", err)
 	}
 
-	log.Println("Server exiting")
+	slog.Info("Server exiting")
 	return nil
 }

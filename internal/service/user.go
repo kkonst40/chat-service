@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
@@ -19,29 +20,57 @@ func NewUserService(newUserRepository repository.UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) GetChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*model.User, error) {
+func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error) {
+	// ?
 	return s.userRepository.GetChatUser(ctx, chatID, userID)
 }
 
 func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.User, error) {
+	log := logger.FromContext(ctx)
+	log.Debug("userService.GetChatUsers", "chatID", chatID)
+
 	if !s.isUserInChat(ctx, chatID, requesterID) {
 		return nil, fmt.Errorf("user is not in the chat")
 	}
 
-	return s.userRepository.GetChatUsers(ctx, chatID)
+	user, err := s.userRepository.GetChatUsers(ctx, chatID)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug("chat users retrieved")
+
+	return user, nil
 }
 
 func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIds []uuid.UUID, requesterID uuid.UUID) error {
+	log := logger.FromContext(ctx)
+	log.Debug("userService.AddChatUsers", "chatID", chatID)
+
 	if !s.isUserInChat(ctx, chatID, requesterID) {
 		return fmt.Errorf("user is not in the chat")
 	}
 
-	return s.userRepository.AddChatUsers(ctx, chatID, userIds)
+	err := s.userRepository.AddChatUsers(ctx, chatID, userIds)
+	if err != nil {
+		return err
+	}
+	log.Debug("chat users added")
+
+	return nil
 }
 
 func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID, requesterID uuid.UUID) error {
+	log := logger.FromContext(ctx)
+	log.Debug("userService.DeleteChatUser", "chatID", chatID)
+
 	if userID == requesterID {
-		return s.userRepository.DeleteChatUser(ctx, chatID, userID)
+		err := s.userRepository.DeleteChatUser(ctx, chatID, userID)
+		if err != nil {
+			return err
+		}
+		log.Debug("user deleted")
+
+		return nil
 	}
 
 	requester, err := s.userRepository.GetChatUser(ctx, chatID, requesterID)
@@ -58,10 +87,19 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 		return fmt.Errorf("user has no permission")
 	}
 
-	return s.userRepository.DeleteChatUser(ctx, chatID, userID)
+	err = s.userRepository.DeleteChatUser(ctx, chatID, userID)
+	if err != nil {
+		return err
+	}
+	log.Debug("user deleted")
+
+	return nil
 }
 
-func (s *UserService) SetUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role, requesterID uuid.UUID) error {
+func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role, requesterID uuid.UUID) error {
+	log := logger.FromContext(ctx)
+	log.Debug("userService.UpdateUserRole", "chatID", chatID, "chatUserID", userID, "role", newRole)
+
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
 		return err
@@ -75,7 +113,13 @@ func (s *UserService) SetUserRole(ctx context.Context, chatID, userID uuid.UUID,
 		return fmt.Errorf("user has no permission")
 	}
 
-	return s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
+	err = s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
+	if err != nil {
+		return err
+	}
+	log.Debug("user role updated")
+
+	return nil
 }
 
 func (s *UserService) hasPermission(ctx context.Context, chatID, requesterID uuid.UUID, role model.Role) bool {

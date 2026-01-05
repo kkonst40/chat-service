@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dto"
+	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
 )
@@ -64,6 +65,8 @@ func (h *ChatHandler) GetChats() gin.HandlerFunc {
 			return
 		}
 
+		logger.FromContext(ctx).Info("user chats retrieved")
+
 		resp := dto.GetChatsResponse{
 			Chats: make([]dto.GetChatResponse, 0, len(chats)),
 		}
@@ -105,6 +108,8 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("chat created", "chatID", chat.ID)
 
 		location := fmt.Sprintf("/chats/%s", chat.ID.String())
 		c.Header("Location", location)
@@ -148,6 +153,8 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 			return
 		}
 
+		logger.FromContext(ctx).Info("chat name updated", "chatID", chatID)
+
 		c.Status(http.StatusNoContent)
 	}
 }
@@ -171,6 +178,8 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 			return
 		}
 
+		logger.FromContext(ctx).Info("chat deleted", "chatID", chatID)
+
 		c.Status(http.StatusNoContent)
 	}
 }
@@ -178,6 +187,7 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
+		ctx := c.Request.Context()
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
@@ -192,5 +202,7 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("connected to chat", "chatID", chatID)
 	}
 }

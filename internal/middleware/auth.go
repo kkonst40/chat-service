@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/ichat/internal/logger"
 )
 
 type CustomClaims struct {
@@ -49,6 +50,9 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			}
 
 			c.Set("requesterID", claims.ID)
+
+			ctx := c.Request.Context()
+			logger.FromContext(ctx).Info("", "userID", claims.ID)
 
 			c.Next()
 		} else {

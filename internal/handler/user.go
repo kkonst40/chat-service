@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dto"
+	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/service"
 )
@@ -38,6 +39,8 @@ func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("chat users retrieved", "chatID", chatID)
 
 		resp := dto.GetChatUsersResponse{
 			Users: make([]dto.GetUserResponse, 0, len(users)),
@@ -83,10 +86,12 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("chat users added", "chatID", chatID)
 	}
 }
 
-func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
+func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.UpdateChatUserRoleRequest
 		requesterID := uuid.MustParse(c.GetString("requesterID"))
@@ -132,11 +137,13 @@ func (h *UserHandler) SetChatUserRole() gin.HandlerFunc {
 			return
 		}
 
-		err = h.userService.SetUserRole(ctx, chatID, userID, role, requesterID)
+		err = h.userService.UpdateUserRole(ctx, chatID, userID, role, requesterID)
 		if err != nil {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("chat user role updated", "chatID", chatID, "userID", userID)
 	}
 }
 
@@ -166,5 +173,7 @@ func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
 			//
 			return
 		}
+
+		logger.FromContext(ctx).Info("chat user deleted", "chatID", chatID, "userID", userID)
 	}
 }
