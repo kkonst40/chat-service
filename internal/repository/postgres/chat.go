@@ -4,17 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
 type ChatRepository struct {
-	db  *sql.DB
-	log *slog.Logger
+	db *sql.DB
 }
 
 func NewChatRepository(db *sql.DB) *ChatRepository {
@@ -40,10 +39,10 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("chat not found")
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 	if err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return &chat, nil

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -84,7 +85,7 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 	log.Debug("chatService.UpdateChatName", "chatID", chatID)
 
 	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Admin) {
-		return fmt.Errorf("user has no permission")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err := s.chatRepository.UpdateChatName(ctx, chatID, name)
@@ -101,7 +102,7 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	log.Debug("chatService.DeleteChat", "chatID", chatID)
 
 	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Owner) {
-		return fmt.Errorf("user has no permission")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err := s.chatRepository.DeleteChat(ctx, chatID)

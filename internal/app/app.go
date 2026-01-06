@@ -64,6 +64,8 @@ func New(cfg *config.Config) (*App, error) {
 
 	wsServer := ws.NewWsServer(chatService, messageService)
 
+	slog.Info("WebSocket server is initialized")
+
 	router := NewRouter(
 		chatHandler,
 		userHandler,
@@ -93,7 +95,7 @@ func (a *App) Run() error {
 			os.Exit(1)
 		}
 	}()
-	slog.Info("Server started on :8080")
+	slog.Info(fmt.Sprintf("Server started on %v", a.server.Addr))
 
 	<-quit
 	slog.Info("Shutting down server...")

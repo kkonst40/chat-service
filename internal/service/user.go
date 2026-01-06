@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -30,7 +31,7 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	log.Debug("userService.GetChatUsers", "chatID", chatID)
 
 	if !s.isUserInChat(ctx, chatID, requesterID) {
-		return nil, fmt.Errorf("user is not in the chat")
+		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
 	user, err := s.userRepository.GetChatUsers(ctx, chatID)
@@ -47,7 +48,7 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userId
 	log.Debug("userService.AddChatUsers", "chatID", chatID)
 
 	if !s.isUserInChat(ctx, chatID, requesterID) {
-		return fmt.Errorf("user is not in the chat")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
 	err := s.userRepository.AddChatUsers(ctx, chatID, userIds)
@@ -84,7 +85,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
-		return fmt.Errorf("user has no permission")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err = s.userRepository.DeleteChatUser(ctx, chatID, userID)
@@ -110,7 +111,7 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
-		return fmt.Errorf("user has no permission")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err = s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)

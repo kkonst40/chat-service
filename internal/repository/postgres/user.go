@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -40,7 +41,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
 	}
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return users, nil
@@ -109,7 +110,11 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 	}
 
 	_, err := r.db.ExecContext(ctx, queryBuilder.String(), args...)
-	return err
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error {
@@ -122,7 +127,11 @@ func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, u
 	log.Debug("deleting chat user in DB", "chatID", chatID, "userID", userID)
 
 	_, err := r.db.ExecContext(ctx, query, userID, chatID)
-	return err
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role) error {
@@ -136,7 +145,11 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	log.Debug("updating chat user role in DB", "chatID", chatID, "userID", userID, "role", newRole)
 
 	_, err := r.db.ExecContext(ctx, query, newRole, userID, chatID)
-	return err
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
@@ -158,7 +171,7 @@ func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.U
 	)
 
 	if err != nil {
-		return false, err
+		return false, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return exists, nil

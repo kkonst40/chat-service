@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -36,10 +37,10 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	log.Debug("messageService.GetChatMessages", "chatID", chatID)
 
 	if !s.chatService.doesChatExist(ctx, chatID) {
-		return nil, fmt.Errorf("chat does not exist")
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 	if !s.userService.isUserInChat(ctx, chatID, requesterID) {
-		return nil, fmt.Errorf("user is not in the chat")
+		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
 	chats, err := s.messageRepository.GetChatMessages(ctx, chatID)
@@ -56,7 +57,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	log.Debug("messageService.CreateMessage", "chatID", chatID)
 
 	if !s.chatService.doesChatExist(ctx, chatID) {
-		return nil, fmt.Errorf("chat does not exist")
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 
 	newID, err := uuid.NewV7()
@@ -90,7 +91,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 	}
 
 	if message.UserID != requesterID {
-		return fmt.Errorf("user is not the owner of the message")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not the owner of the message (%v)", requesterID, msgID)}
 	}
 
 	newMessage := &model.Message{
@@ -139,7 +140,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[sender.Role]) {
-		return fmt.Errorf("user has no permission")
+		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err = s.messageRepository.DeleteMessage(ctx, msgID)

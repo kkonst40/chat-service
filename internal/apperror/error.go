@@ -1,11 +1,29 @@
 package apperror
 
-import "errors"
+type NotFoundError struct {
+	Msg string
+}
 
-var (
-	ErrUserNotFound         = errors.New("user not found")
-	ErrChatNotFound         = errors.New("chat not found")
-	ErrChatAlreadyExists    = errors.New("chat already exists")
-	ErrMessageNotFound      = errors.New("message not found")
-	ErrMessageAlreadyExists = errors.New("message already exists")
-)
+func (e *NotFoundError) Error() string {
+	return e.Msg
+}
+
+type ForbiddenError struct {
+	Msg string
+}
+
+func (e *ForbiddenError) Error() string {
+	return e.Msg
+}
+
+type DBError struct {
+	Msg string
+}
+
+func (e *DBError) Error() string {
+	return e.Msg
+}
+
+var _ error = (*NotFoundError)(nil)
+var _ error = (*ForbiddenError)(nil)
+var _ error = (*DBError)(nil)

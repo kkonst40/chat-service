@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -42,10 +43,10 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("message not found")
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msgID)}
 	}
 	if err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return &msg, nil
@@ -64,7 +65,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 	defer rows.Close()
 
@@ -79,6 +80,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			&msg.Text,
 			&msg.CreatedAt,
 		); err != nil {
+			// ??
 			return nil, err
 		}
 
@@ -86,7 +88,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return messages, nil
@@ -111,7 +113,11 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 		msg.CreatedAt,
 	)
 
-	return err
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Message) error {
@@ -125,7 +131,11 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 	log.Debug("updating message in DB", "msgID", msg.ID)
 
 	_, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
-	return err
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
@@ -138,7 +148,11 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 	log.Debug("deleting message in DB", "msgID", msgID)
 
 	_, err := r.db.ExecContext(ctx, query, msgID)
-	return err
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 var _ repository.MessageRepository = (*MessageRepository)(nil)
