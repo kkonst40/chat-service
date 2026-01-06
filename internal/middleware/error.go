@@ -31,21 +31,27 @@ func Error() gin.HandlerFunc {
 			case errors.Is(err, context.DeadlineExceeded):
 				statusCode = http.StatusGatewayTimeout
 				message = "The request took too long to process"
+
 			case errors.As(err, &nfErr):
 				statusCode = http.StatusNotFound
 				message = nfErr.Msg
+
 			case errors.As(err, &invReqErr):
 				statusCode = http.StatusBadRequest
 				message = invReqErr.Msg
+
 			case errors.As(err, &frbErr):
 				statusCode = http.StatusForbidden
 				message = "Access denied"
+
 			case errors.As(err, &unauthErr):
 				statusCode = http.StatusUnauthorized
 				message = "User unauthorized"
+
 			case errors.As(err, &dbErr):
 				statusCode = http.StatusInternalServerError
 				message = "Internal server error"
+
 			default:
 				statusCode = http.StatusInternalServerError
 				message = "Internal server error"
