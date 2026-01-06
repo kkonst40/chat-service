@@ -26,7 +26,7 @@ func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID)
 	return s.userRepository.GetChatUser(ctx, chatID, userID)
 }
 
-func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.User, error) {
+func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]model.User, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("userService.GetChatUsers", "chatID", chatID)
 

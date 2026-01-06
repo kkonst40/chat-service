@@ -32,7 +32,7 @@ func NewMessageService(
 	return &service
 }
 
-func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]*model.Message, error) {
+func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]model.Message, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("messageService.GetChatMessages", "chatID", chatID)
 
@@ -43,13 +43,13 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
-	chats, err := s.messageRepository.GetChatMessages(ctx, chatID)
+	messages, err := s.messageRepository.GetChatMessages(ctx, chatID)
 	if err != nil {
 		return nil, err
 	}
 	log.Debug("messages retrieved")
 
-	return chats, nil
+	return messages, nil
 }
 
 func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {

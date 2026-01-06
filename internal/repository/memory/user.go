@@ -37,14 +37,14 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, user
 	return user, nil
 }
 
-func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]*model.User, error) {
+func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 
-	result := make([]*model.User, 0)
+	result := make([]model.User, 0)
 	for _, user := range r.db.users {
 		if user.ChatID == chatID {
-			result = append(result, user)
+			result = append(result, *user)
 		}
 	}
 

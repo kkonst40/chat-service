@@ -31,11 +31,11 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	return chat, nil
 }
 
-func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
+func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]model.Chat, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 
-	chats := make([]*model.Chat, 0)
+	chats := make([]model.Chat, 0)
 	for _, user := range r.db.users {
 		if user.ID == userID {
 			chats = append(chats, r.db.chats[user.ChatID])

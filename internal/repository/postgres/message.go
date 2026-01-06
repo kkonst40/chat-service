@@ -52,7 +52,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	return &msg, nil
 }
 
-func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]*model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]model.Message, error) {
 	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, user_id, chat_id, text, created_at
@@ -69,7 +69,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 	}
 	defer rows.Close()
 
-	var messages []*model.Message
+	var messages []model.Message
 
 	for rows.Next() {
 		var msg model.Message
@@ -84,7 +84,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			return nil, err
 		}
 
-		messages = append(messages, &msg)
+		messages = append(messages, msg)
 	}
 
 	if err := rows.Err(); err != nil {

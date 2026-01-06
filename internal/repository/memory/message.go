@@ -31,14 +31,14 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	return message, nil
 }
 
-func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]*model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]model.Message, error) {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
-	messages := make([]*model.Message, 0)
+	messages := make([]model.Message, 0)
 	for _, v := range r.db.messages {
 		if v.ChatID == chatID {
-			messages = append(messages, v)
+			messages = append(messages, *v)
 		}
 	}
 

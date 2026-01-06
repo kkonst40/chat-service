@@ -50,7 +50,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	return &user, nil
 }
 
-func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]*model.User, error) {
+func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error) {
 	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, chat_id, role
@@ -66,7 +66,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 	}
 	defer rows.Close()
 
-	var users []*model.User
+	var users []model.User
 	for rows.Next() {
 		var user model.User
 		if err := rows.Scan(
@@ -77,7 +77,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 			return nil, err
 		}
 
-		users = append(users, &user)
+		users = append(users, user)
 	}
 
 	if err := rows.Err(); err != nil {

@@ -38,7 +38,7 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Cha
 	return chat, nil
 }
 
-func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
+func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID) ([]model.Chat, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("chatService.GetUserChats")
 

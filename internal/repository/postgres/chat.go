@@ -48,7 +48,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	return &chat, nil
 }
 
-func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]*model.Chat, error) {
+func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]model.Chat, error) {
 	log := logger.FromContext(ctx)
 
 	const query = `
@@ -67,7 +67,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 	}
 	defer rows.Close()
 
-	var chats []*model.Chat
+	var chats []model.Chat
 
 	for rows.Next() {
 		var chat model.Chat
@@ -78,7 +78,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 			return nil, err
 		}
 
-		chats = append(chats, &chat)
+		chats = append(chats, chat)
 	}
 
 	if err := rows.Err(); err != nil {
