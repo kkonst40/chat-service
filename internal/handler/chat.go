@@ -1,11 +1,15 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
@@ -31,17 +35,15 @@ func (h *ChatHandler) GetChat() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		chat, err := h.chatService.GetChat(ctx, chatID)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Chat not found",
-			})
+			c.Error(err)
 			return
 		}
 
@@ -61,7 +63,7 @@ func (h *ChatHandler) GetChats() gin.HandlerFunc {
 
 		chats, err := h.chatService.GetUserChats(ctx, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -89,23 +91,13 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		if req.Name == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Chat name is required",
-			})
+			c.Error(validationErr(err))
 			return
 		}
 
 		chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -126,30 +118,20 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		if req.Name == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Chat name is required",
-			})
+			c.Error(validationErr(err))
 			return
 		}
 
 		err = h.chatService.UpdateChatName(ctx, chatID, req.Name, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -166,15 +148,15 @@ func (h *ChatHandler) DeleteChat() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		err = h.chatService.DeleteChat(ctx, chatID, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -191,18 +173,36 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		err = wsServer.Connect(c.Writer, c.Request, requesterID, chatID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
 		logger.FromContext(ctx).Info("connected to chat", "chatID", chatID)
+	}
+}
+
+func validationErr(err error) *apperror.InvalidRequestError {
+	var ve validator.ValidationErrors
+	if errors.As(err, &ve) {
+		fields := make([]string, 0, len(ve))
+		for _, fe := range ve {
+			fields = append(fields, fe.Field())
+		}
+
+		return &apperror.InvalidRequestError{
+			Msg: "Invalid fields in request body: " + strings.Join(fields, ", "),
+		}
+	}
+
+	return &apperror.InvalidRequestError{
+		Msg: "Invalid request body",
 	}
 }

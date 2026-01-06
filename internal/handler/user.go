@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
@@ -28,15 +29,15 @@ func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		users, err := h.userService.GetChatUsers(ctx, chatID, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -66,24 +67,20 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
-		err = c.ShouldBindJSON(&req)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
+		if err = c.ShouldBindJSON(&req); err != nil {
+			c.Error(validationErr(err))
 			return
 		}
 
 		err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -99,26 +96,22 @@ func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		userID, err := uuid.Parse(c.Param("userId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid user ID format",
 			})
 			return
 		}
 
-		err = c.ShouldBindJSON(&req)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Invalid request body",
-				"details": err.Error(),
-			})
+		if err = c.ShouldBindJSON(&req); err != nil {
+			c.Error(validationErr(err))
 			return
 		}
 
@@ -131,15 +124,15 @@ func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
 		case "owner":
 			role = model.Owner
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid role name",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid user role name",
 			})
 			return
 		}
 
 		err = h.userService.UpdateUserRole(ctx, chatID, userID, role, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 
@@ -154,23 +147,23 @@ func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		userID, err := uuid.Parse(c.Param("userId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid user ID format",
 			})
 			return
 		}
 
 		err = h.userService.DeleteChatUser(ctx, chatID, userID, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 

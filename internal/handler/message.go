@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
@@ -29,15 +30,15 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 
 		chatID, err := uuid.Parse(c.Param("chatId"))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid chat ID format",
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid chat ID format",
 			})
 			return
 		}
 
 		messages, err := h.messageService.GetChatMessages(ctx, chatID, requesterID)
 		if err != nil {
-			//
+			c.Error(err)
 			return
 		}
 

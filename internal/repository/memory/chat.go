@@ -38,7 +38,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 	chats := make([]model.Chat, 0)
 	for _, user := range r.db.users {
 		if user.ID == userID {
-			chats = append(chats, r.db.chats[user.ChatID])
+			chats = append(chats, *r.db.chats[user.ChatID])
 		}
 	}
 

@@ -23,7 +23,5 @@ func Logger() gin.HandlerFunc {
 
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
-
-		c.Writer.Status()
 	}
 }
