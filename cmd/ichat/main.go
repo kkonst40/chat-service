@@ -10,10 +10,10 @@ import (
 )
 
 func main() {
-	log := logger.New("dev")
+	log := logger.New("prod")
 	slog.SetDefault(log)
 
-	cfg, err := config.Load("dev")
+	cfg, err := config.Load("prod")
 	if err != nil {
 		log.Error("config loading error", "error", err.Error())
 		log.Info("Server exiting")
