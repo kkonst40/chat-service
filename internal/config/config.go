@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 type DBConfig struct {
@@ -27,16 +28,16 @@ type Config struct {
 	DB  DBConfig  `json:"db"`
 }
 
-func Load(cfgType string) (*Config, error) {
+func Load() (*Config, error) {
 	var cfg *Config
 	var err error
-	switch cfgType {
-	case "dev":
+	switch runtime.GOOS {
+	case "windows":
 		cfg, err = loadConfigJSON()
-	case "prod":
+	case "linux":
 		cfg, err = loadConfigEnv()
 	default:
-		return nil, fmt.Errorf("config loading error: invalid config type: %v, must be 'dev' or 'prod'", cfgType)
+		return nil, fmt.Errorf("config loading error")
 	}
 
 	return cfg, err

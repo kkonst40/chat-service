@@ -10,27 +10,29 @@ import (
 )
 
 func main() {
-	log := logger.New("prod")
-	slog.SetDefault(log)
+	slog.SetDefault(slog.Default())
 
-	cfg, err := config.Load("prod")
+	cfg, err := config.Load()
 	if err != nil {
-		log.Error("config loading error", "error", err.Error())
-		log.Info("Server exiting")
+		slog.Error("Config loading error", "error", err.Error())
+		slog.Info("Server exiting")
 		os.Exit(1)
 	}
 
+	log := logger.New(cfg.Env)
+	slog.SetDefault(log)
+
 	application, err := app.New(cfg)
 	if err != nil {
-		log.Error("application creating error", "error", err.Error())
-		log.Info("Server exiting")
+		slog.Error("Application creating error", "error", err.Error())
+		slog.Info("Server exiting")
 		os.Exit(1)
 	}
 
 	err = application.Run()
 	if err != nil {
-		log.Error("application running error", "error", err.Error())
-		log.Info("Server exiting")
+		slog.Error("Application running error", "error", err.Error())
+		slog.Info("Server exiting")
 		os.Exit(1)
 	}
 }
