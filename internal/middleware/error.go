@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kkonst40/ichat/internal/apperror"
+	"github.com/kkonst40/ichat/internal/logger"
 )
 
 func Error() gin.HandlerFunc {
@@ -18,6 +19,7 @@ func Error() gin.HandlerFunc {
 
 			var statusCode int
 			var message string
+			log := logger.FromContext(c.Request.Context())
 
 			var (
 				nfErr     *apperror.NotFoundError
@@ -31,30 +33,37 @@ func Error() gin.HandlerFunc {
 			case errors.Is(err, context.DeadlineExceeded):
 				statusCode = http.StatusGatewayTimeout
 				message = "The request took too long to process"
+				log.Error("Context deadline exceeded", "errors", err)
 
 			case errors.As(err, &nfErr):
 				statusCode = http.StatusNotFound
 				message = nfErr.Msg
+				log.Error("Resource not found", "errors", nfErr.Msg)
 
 			case errors.As(err, &invReqErr):
 				statusCode = http.StatusBadRequest
 				message = invReqErr.Msg
+				log.Error("Invalid request", "errors", invReqErr.Msg)
 
 			case errors.As(err, &frbErr):
 				statusCode = http.StatusForbidden
 				message = "Access denied"
+				log.Error("User has no access", "errors", frbErr.Msg)
 
 			case errors.As(err, &unauthErr):
 				statusCode = http.StatusUnauthorized
 				message = "User unauthorized"
+				log.Error("User authorization failed", "errors", unauthErr.Msg)
 
 			case errors.As(err, &dbErr):
 				statusCode = http.StatusInternalServerError
 				message = "Internal server error"
+				log.Error("Database connection error while executing query", "errors", dbErr.Msg)
 
 			default:
 				statusCode = http.StatusInternalServerError
 				message = "Internal server error"
+				log.Error("Internal server error")
 			}
 
 			c.JSON(statusCode, gin.H{

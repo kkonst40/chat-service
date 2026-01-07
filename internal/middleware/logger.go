@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -22,6 +23,8 @@ func Logger() gin.HandlerFunc {
 		ctx := context.WithValue(c.Request.Context(), logger.CtxKey, log)
 
 		c.Request = c.Request.WithContext(ctx)
+		start := time.Now()
 		c.Next()
+		log.Info("Request handling time", "time", time.Since(start))
 	}
 }
