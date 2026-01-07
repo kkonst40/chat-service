@@ -63,7 +63,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 	defer rows.Close()
 
@@ -75,14 +75,14 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 			&chat.ID,
 			&chat.Name,
 		); err != nil {
-			return nil, err
+			return nil, &apperror.DBError{Msg: err.Error()}
 		}
 
 		chats = append(chats, chat)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return chats, nil
@@ -103,20 +103,20 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return &apperror.DBError{Msg: err.Error()}
 	}
 
 	defer tx.Rollback()
 
 	if _, err = tx.ExecContext(ctx, chatQuery, chat.ID, chat.Name); err != nil {
-		return fmt.Errorf("create chat: %w", err)
+		return &apperror.DBError{Msg: err.Error()}
 	}
 	if _, err = tx.ExecContext(ctx, userQuery, creatorID, chat.ID, model.Owner); err != nil {
-		return fmt.Errorf("create owner: %w", err)
+		return &apperror.DBError{Msg: err.Error()}
 	}
 
 	if err = tx.Commit(); err != nil {
-		return err
+		return &apperror.DBError{Msg: err.Error()}
 	}
 
 	return nil
@@ -132,8 +132,21 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 
 	log.Debug("updating name of the chat in DB", "chatID", chatID, "new_name", name)
 
-	_, err := r.db.ExecContext(ctx, query, name, chatID)
-	return err
+	res, err := r.db.ExecContext(ctx, query, name, chatID)
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	if rowsAffected == 0 {
+		return &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+	}
+
+	return nil
 }
 
 func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
@@ -145,8 +158,11 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 
 	log.Debug("deleting the chat from DB", "chatID", chatID)
 
-	_, err := r.db.ExecContext(ctx, query, chatID)
-	return err
+	if _, err := r.db.ExecContext(ctx, query, chatID); err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	return nil
 }
 
 func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
@@ -168,7 +184,7 @@ func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (b
 	)
 
 	if err != nil {
-		return false, err
+		return false, &apperror.DBError{Msg: err.Error()}
 	}
 
 	return exists, nil

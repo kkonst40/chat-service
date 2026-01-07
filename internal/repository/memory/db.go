@@ -46,13 +46,13 @@ func NewDB() *MemoryDB {
 	db.chats[chatID8] = &model.Chat{ID: chatID8, Name: "Chat8"}
 	db.chats[chatID9] = &model.Chat{ID: chatID9, Name: "Chat9"}
 
-	db.users[key{UserID: userID1, ChatID: chatID0}] = &model.User{ID: userID1, ChatID: chatID0, Role: model.Common}
-	db.users[key{UserID: userID1, ChatID: chatID1}] = &model.User{ID: userID1, ChatID: chatID1, Role: model.Common}
-	db.users[key{UserID: userID1, ChatID: chatID3}] = &model.User{ID: userID1, ChatID: chatID3, Role: model.Common}
-	db.users[key{UserID: userID1, ChatID: chatID5}] = &model.User{ID: userID1, ChatID: chatID5, Role: model.Common}
-	db.users[key{UserID: userID1, ChatID: chatID7}] = &model.User{ID: userID1, ChatID: chatID7, Role: model.Common}
-	db.users[key{UserID: userID1, ChatID: chatID8}] = &model.User{ID: userID1, ChatID: chatID8, Role: model.Common}
-	db.users[key{UserID: userID1, ChatID: chatID9}] = &model.User{ID: userID1, ChatID: chatID9, Role: model.Common}
+	db.users[key{UserID: userID1, ChatID: chatID0}] = &model.User{ID: userID1, ChatID: chatID0, Role: model.Admin}
+	db.users[key{UserID: userID1, ChatID: chatID1}] = &model.User{ID: userID1, ChatID: chatID1, Role: model.Admin}
+	db.users[key{UserID: userID1, ChatID: chatID3}] = &model.User{ID: userID1, ChatID: chatID3, Role: model.Admin}
+	db.users[key{UserID: userID1, ChatID: chatID5}] = &model.User{ID: userID1, ChatID: chatID5, Role: model.Admin}
+	db.users[key{UserID: userID1, ChatID: chatID7}] = &model.User{ID: userID1, ChatID: chatID7, Role: model.Admin}
+	db.users[key{UserID: userID1, ChatID: chatID8}] = &model.User{ID: userID1, ChatID: chatID8, Role: model.Admin}
+	db.users[key{UserID: userID1, ChatID: chatID9}] = &model.User{ID: userID1, ChatID: chatID9, Role: model.Admin}
 
 	db.users[key{UserID: userID2, ChatID: chatID0}] = &model.User{ID: userID2, ChatID: chatID0, Role: model.Common}
 	db.users[key{UserID: userID2, ChatID: chatID1}] = &model.User{ID: userID2, ChatID: chatID1, Role: model.Common}

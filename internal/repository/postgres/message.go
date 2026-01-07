@@ -80,8 +80,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			&msg.Text,
 			&msg.CreatedAt,
 		); err != nil {
-			// ??
-			return nil, err
+			return nil, &apperror.DBError{Msg: err.Error()}
 		}
 
 		messages = append(messages, msg)
@@ -130,9 +129,18 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 
 	log.Debug("updating message in DB", "msgID", msg.ID)
 
-	_, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
+	res, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
 	if err != nil {
 		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return &apperror.DBError{Msg: err.Error()}
+	}
+
+	if rowsAffected == 0 {
+		return &apperror.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msg.ID)}
 	}
 
 	return nil
@@ -147,8 +155,7 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 
 	log.Debug("deleting message in DB", "msgID", msgID)
 
-	_, err := r.db.ExecContext(ctx, query, msgID)
-	if err != nil {
+	if _, err := r.db.ExecContext(ctx, query, msgID); err != nil {
 		return &apperror.DBError{Msg: err.Error()}
 	}
 

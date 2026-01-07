@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
@@ -25,7 +26,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 
 	message, ok := r.db.messages[msgID]
 	if !ok {
-		return nil, fmt.Errorf("message with ID %s does not exist", msgID)
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msgID)}
 	}
 
 	return message, nil
@@ -50,7 +51,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; ok {
-		return fmt.Errorf("message with ID %s already exists", msg.ID)
+		return &apperror.DBError{Msg: "collision error while creating message"}
 	}
 	r.db.messages[msg.ID] = msg
 
@@ -62,7 +63,7 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; !ok {
-		return fmt.Errorf("message with ID %s does not exist", msg.ID)
+		return &apperror.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msg.ID)}
 	}
 	r.db.messages[msg.ID] = msg
 

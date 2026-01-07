@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
@@ -25,7 +26,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 
 	chat, ok := r.db.chats[chatID]
 	if !ok {
-		return nil, fmt.Errorf("chat with ID %s does not exist", chatID)
+		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 
 	return chat, nil
@@ -50,7 +51,7 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chat.ID]; ok {
-		return fmt.Errorf("chat with ID %s already exists", chat.ID)
+		return &apperror.DBError{Msg: "collision error while creating chat"}
 	}
 	r.db.chats[chat.ID] = chat
 
@@ -62,7 +63,7 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chatID]; !ok {
-		return fmt.Errorf("chat with ID %s does not exist", chatID)
+		return &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 	r.db.chats[chatID].Name = name
 
