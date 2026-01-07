@@ -58,7 +58,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 		SELECT id, user_id, chat_id, text, created_at
 		FROM messages
 		WHERE chat_id = $1
-		ORDER BY created_at ASC
+		ORDER BY created_at DESC
 	`
 
 	log.Debug("getting chat messages from DB", "chatID", chatID)

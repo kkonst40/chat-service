@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/apperror"
@@ -42,6 +43,10 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			messages = append(messages, *v)
 		}
 	}
+
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].CreatedAt.After(messages[j].CreatedAt)
+	})
 
 	return messages, nil
 }
