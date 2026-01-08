@@ -28,7 +28,6 @@ func NewChatHandler(newChatService *service.ChatService) *ChatHandler {
 	return &handler
 }
 
-// ?????
 func (h *ChatHandler) GetChat() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
@@ -91,7 +90,7 @@ func (h *ChatHandler) CreateChat() gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(validationErr(err))
+			c.Error(handleValidationErr(err))
 			return
 		}
 
@@ -125,7 +124,7 @@ func (h *ChatHandler) UpdateChatName() gin.HandlerFunc {
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.Error(validationErr(err))
+			c.Error(handleValidationErr(err))
 			return
 		}
 
@@ -179,6 +178,13 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 			return
 		}
 
+		if !h.chatService.DoesChatExist(ctx, chatID) {
+			c.Error(&apperror.NotFoundError{
+				Msg: fmt.Sprintf("chat (%v) not found", chatID),
+			})
+			return
+		}
+
 		err = wsServer.Connect(c.Writer, c.Request, requesterID, chatID)
 		if err != nil {
 			c.Error(err)
@@ -189,7 +195,7 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 	}
 }
 
-func validationErr(err error) *apperror.InvalidRequestError {
+func handleValidationErr(err error) *apperror.InvalidRequestError {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		fields := make([]string, 0, len(ve))

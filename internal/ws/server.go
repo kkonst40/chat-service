@@ -2,13 +2,14 @@ package ws
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -18,6 +19,24 @@ type Server struct {
 	rooms          map[uuid.UUID]*room
 	messageService *service.MessageService
 	mu             sync.Mutex
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:   4096,
+	WriteBufferSize:  4096,
+	HandshakeTimeout: 10,
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+
+		if u.Hostname() == "localhost" {
+			return true
+		}
+		return false
+	},
 }
 
 func NewWsServer(chatService *service.ChatService, messageService *service.MessageService) *Server {
@@ -31,10 +50,11 @@ func NewWsServer(chatService *service.ChatService, messageService *service.Messa
 }
 
 func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUID, chatId uuid.UUID) error {
-	upgrader := websocket.Upgrader{}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return err
+		return &apperror.ChatConnectionError{
+			Msg: err.Error(),
+		}
 	}
 
 	user := &user{
@@ -49,7 +69,7 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUI
 	if !ok {
 		room = newRoom(s.ctx)
 		s.rooms[chatId] = room
-		go s.runRoom(chatId)
+		go s.runRoom(room, chatId)
 	}
 	s.mu.Unlock()
 
@@ -57,61 +77,63 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUI
 
 	go user.writeMessage()
 	go user.readMessage(room)
+
 	return nil
 }
 
-func (s *Server) runRoom(chatId uuid.UUID) error {
-	room, ok := s.rooms[chatId]
-	if !ok {
-		return fmt.Errorf("chat %v does not exist", chatId)
-	}
+func (s *Server) runRoom(room *room, chatId uuid.UUID) {
+	defer func() {
+		s.mu.Lock()
+		delete(s.rooms, chatId)
+		s.mu.Unlock()
+		for u := range room.users {
+			close(u.send)
+		}
+		room.cancel()
+	}()
 
 	for {
 		select {
 		case <-room.ctx.Done():
-			return room.ctx.Err()
+			return
 
 		case user := <-room.addUser:
-			room.mutex.Lock()
 			room.users[user] = true
-			room.mutex.Unlock()
 
 		case user := <-room.removeUser:
-			room.mutex.Lock()
 			if _, ok := room.users[user]; ok {
 				delete(room.users, user)
 				close(user.send)
 			}
 			if len(room.users) == 0 {
-				room.cancel()
-				delete(s.rooms, chatId)
-				return nil
+				return
 			}
-			room.mutex.Unlock()
 
-		case message := <-room.broadcast:
-			_, err := s.messageService.CreateMessage(
-				room.ctx,
-				message.userID,
-				chatId,
-				string(message.data),
-			)
-			if err != nil {
-				log.Println("error saving message error")
-				continue
-			}
-			room.mutex.RLock()
+		case msg := <-room.broadcast:
+			go func(m message) {
+				_, err := s.messageService.CreateMessage(
+					room.ctx,
+					m.userID,
+					chatId,
+					string(m.data),
+				)
+				if err != nil {
+					log.Println("saving message error")
+				}
+			}(msg)
+
 			for user := range room.users {
-				if user.id != message.userID {
-					select {
-					case user.send <- message:
-					default:
-						delete(room.users, user)
-						close(user.send)
-					}
+				if user.id == msg.userID {
+					continue
+				}
+
+				select {
+				case user.send <- msg:
+				default:
+					delete(room.users, user)
+					close(user.send)
 				}
 			}
-			room.mutex.RUnlock()
 		}
 	}
 }

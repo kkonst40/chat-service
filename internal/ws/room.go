@@ -2,7 +2,6 @@ package ws
 
 import (
 	"context"
-	"sync"
 )
 
 type room struct {
@@ -13,7 +12,6 @@ type room struct {
 	addUser    chan *user
 	removeUser chan *user
 	broadcast  chan message
-	mutex      sync.RWMutex
 }
 
 func newRoom(ctxParent context.Context) *room {

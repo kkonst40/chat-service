@@ -114,7 +114,7 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	return nil
 }
 
-func (s *ChatService) doesChatExist(ctx context.Context, chatID uuid.UUID) bool {
+func (s *ChatService) DoesChatExist(ctx context.Context, chatID uuid.UUID) bool {
 	exists, err := s.chatRepository.DoesChatExist(ctx, chatID)
 	if err != nil {
 		return false

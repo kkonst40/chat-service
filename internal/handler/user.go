@@ -74,7 +74,7 @@ func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
 		}
 
 		if err = c.ShouldBindJSON(&req); err != nil {
-			c.Error(validationErr(err))
+			c.Error(handleValidationErr(err))
 			return
 		}
 
@@ -111,7 +111,7 @@ func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
 		}
 
 		if err = c.ShouldBindJSON(&req); err != nil {
-			c.Error(validationErr(err))
+			c.Error(handleValidationErr(err))
 			return
 		}
 

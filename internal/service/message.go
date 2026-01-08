@@ -36,7 +36,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	log := logger.FromContext(ctx)
 	log.Debug("messageService.GetChatMessages", "chatID", chatID)
 
-	if !s.chatService.doesChatExist(ctx, chatID) {
+	if !s.chatService.DoesChatExist(ctx, chatID) {
 		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 	if !s.userService.isUserInChat(ctx, chatID, requesterID) {
@@ -56,7 +56,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	log := logger.FromContext(ctx)
 	log.Debug("messageService.CreateMessage", "chatID", chatID)
 
-	if !s.chatService.doesChatExist(ctx, chatID) {
+	if !s.chatService.DoesChatExist(ctx, chatID) {
 		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 

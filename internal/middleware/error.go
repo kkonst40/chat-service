@@ -22,11 +22,12 @@ func Error() gin.HandlerFunc {
 			log := logger.FromContext(c.Request.Context())
 
 			var (
-				nfErr     *apperror.NotFoundError
-				invReqErr *apperror.InvalidRequestError
-				frbErr    *apperror.ForbiddenError
-				unauthErr *apperror.UnauthorizedError
-				dbErr     *apperror.DBError
+				nfErr       *apperror.NotFoundError
+				invReqErr   *apperror.InvalidRequestError
+				frbErr      *apperror.ForbiddenError
+				unauthErr   *apperror.UnauthorizedError
+				dbErr       *apperror.DBError
+				chatConnErr *apperror.ChatConnectionError
 			)
 
 			switch {
@@ -38,27 +39,32 @@ func Error() gin.HandlerFunc {
 			case errors.As(err, &nfErr):
 				statusCode = http.StatusNotFound
 				message = nfErr.Msg
-				log.Error("Resource not found", "errors", nfErr.Msg)
+				log.Error("Resource not found", "errors", err.Error())
 
 			case errors.As(err, &invReqErr):
 				statusCode = http.StatusBadRequest
 				message = invReqErr.Msg
-				log.Error("Invalid request", "errors", invReqErr.Msg)
+				log.Error("Invalid request", "errors", err.Error())
 
 			case errors.As(err, &frbErr):
 				statusCode = http.StatusForbidden
 				message = "Access denied"
-				log.Error("User has no access", "errors", frbErr.Msg)
+				log.Error("User has no access", "errors", err.Error())
 
 			case errors.As(err, &unauthErr):
 				statusCode = http.StatusUnauthorized
 				message = "User unauthorized"
-				log.Error("User authorization failed", "errors", unauthErr.Msg)
+				log.Error("User authorization failed", "errors", err.Error())
 
 			case errors.As(err, &dbErr):
 				statusCode = http.StatusInternalServerError
 				message = "Internal server error"
-				log.Error("Database connection error while executing query", "errors", dbErr.Msg)
+				log.Error("Database connection error while executing query", "errors", err.Error())
+
+			case errors.As(err, &chatConnErr):
+				statusCode = http.StatusForbidden
+				message = "Upgrading to WebSocket error"
+				log.Error("Upgrading from HTTP to WebSocket", "errors", err.Error())
 
 			default:
 				statusCode = http.StatusInternalServerError
