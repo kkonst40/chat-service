@@ -108,7 +108,7 @@ func (a *App) Run() error {
 		slog.Warn("DB close error", "error", err.Error())
 	}
 
-	slog.Info("Server exiting")
+	slog.Warn("Server exiting")
 	return nil
 }
 
