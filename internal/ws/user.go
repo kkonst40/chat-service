@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,7 +37,7 @@ func (u *user) readMessage(r *room) {
 		var receiveEvent roomEvent
 		err := u.conn.ReadJSON(&receiveEvent)
 		if err != nil {
-			fmt.Println("error reading json from socket")
+			slog.Error("Error reading json from socket", "userID", u.id)
 			break
 		}
 
@@ -67,14 +67,14 @@ func (u *user) writeMessage() {
 	for {
 		select {
 		case event, ok := <-u.send:
-			u.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				fmt.Println("user send chan is closed")
 				return
 			}
 
+			u.conn.SetWriteDeadline(time.Now().Add(writeWait))
+
 			if err := u.conn.WriteJSON(event); err != nil {
-				fmt.Println("error writing json to socket")
+				slog.Error("Error writing json to socket", "userID", u.id)
 				return
 			}
 

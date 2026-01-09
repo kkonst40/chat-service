@@ -3,7 +3,7 @@ package ws
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -45,7 +45,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func NewWsServer(chatService *service.ChatService, messageService *service.MessageService) *Server {
+func NewServer(chatService *service.ChatService, messageService *service.MessageService) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
 		ctx:            ctx,
@@ -55,7 +55,7 @@ func NewWsServer(chatService *service.ChatService, messageService *service.Messa
 	}
 }
 
-func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUID, chatId uuid.UUID) error {
+func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userID uuid.UUID, chatID uuid.UUID) error {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return &apperror.ChatConnectionError{
@@ -64,18 +64,18 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUI
 	}
 
 	user := &user{
-		id:   userId,
+		id:   userID,
 		conn: conn,
 		send: make(chan roomEvent, 256),
 	}
 
 	s.mu.Lock()
-
-	room, ok := s.rooms[chatId]
+	room, ok := s.rooms[chatID]
 	if !ok {
 		room = newRoom(s.ctx)
-		s.rooms[chatId] = room
-		go s.runRoom(room, chatId)
+		s.rooms[chatID] = room
+		go s.runRoom(room, chatID)
+		slog.Info("Room created", "roomID", chatID)
 	}
 	s.mu.Unlock()
 
@@ -87,22 +87,22 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUI
 	return nil
 }
 
-func (s *Server) runRoom(room *room, chatId uuid.UUID) {
+func (s *Server) runRoom(room *room, chatID uuid.UUID) {
 	defer func() {
 		s.mu.Lock()
-		delete(s.rooms, chatId)
+		delete(s.rooms, chatID)
 		s.mu.Unlock()
 		for u := range room.users {
 			close(u.send)
 		}
 		room.cancel()
-		fmt.Println("runRoom end")
+		slog.Info("Room stopped", "roomID", chatID)
 	}()
 
 	for {
 		select {
 		case <-room.ctx.Done():
-			fmt.Print("room context done")
+			slog.Debug("Room context done", "roomID", chatID)
 			return
 
 		case user := <-room.addUser:
@@ -114,14 +114,13 @@ func (s *Server) runRoom(room *room, chatId uuid.UUID) {
 				close(user.send)
 			}
 			if len(room.users) == 0 {
-				fmt.Println("all user left the chat, shuting down room")
 				return
 			}
 
 		case event := <-room.eventQueue:
-			event, err := s.handleEvent(event, chatId)
+			event, err := s.handleEvent(event, chatID)
 			if err != nil {
-				log.Println(err.Error())
+				slog.Error("Handling event error", "errors", err.Error())
 				continue
 			}
 
@@ -139,13 +138,6 @@ func (s *Server) runRoom(room *room, chatId uuid.UUID) {
 
 func (s *Server) Shutdown() {
 	s.cancel()
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for _, room := range s.rooms {
-		room.cancel()
-	}
 }
 
 func (s *Server) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, error) {
@@ -168,7 +160,7 @@ func (s *Server) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, erro
 			)
 
 			if err != nil {
-				log.Println("saving message error")
+				slog.Error("Saving message error", "messageID", event.MsgID)
 			}
 		}()
 
@@ -181,7 +173,6 @@ func (s *Server) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, erro
 		)
 
 		if err != nil {
-			log.Println("updating msg error")
 			return roomEvent{}, err
 		}
 
@@ -193,9 +184,10 @@ func (s *Server) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, erro
 		)
 
 		if err != nil {
-			log.Println("deleting msg error")
 			return roomEvent{}, err
 		}
+	default:
+		return roomEvent{}, fmt.Errorf("Unknown action type")
 	}
 
 	return event, nil
