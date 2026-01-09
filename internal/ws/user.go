@@ -25,12 +25,12 @@ func (u *user) readMessage(r *room) {
 		u.conn.Close()
 	}()
 
-	//u.conn.SetReadLimit(512 * 1024)
-	//u.conn.SetReadDeadline(time.Now().Add(pongWait))
-	//u.conn.SetPongHandler(func(string) error {
-	//	u.conn.SetReadDeadline(time.Now().Add(pongWait))
-	//	return nil
-	//})
+	u.conn.SetReadLimit(512 * 1024)
+	u.conn.SetReadDeadline(time.Now().Add(pongWait))
+	u.conn.SetPongHandler(func(string) error {
+		u.conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
 
 	for {
 		var receiveEvent roomEvent

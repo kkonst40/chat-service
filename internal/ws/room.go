@@ -12,7 +12,6 @@ type room struct {
 	addUser    chan *user
 	removeUser chan *user
 	eventQueue chan roomEvent
-	broadcast  chan roomEvent
 }
 
 func newRoom(ctxParent context.Context) *room {
@@ -25,6 +24,5 @@ func newRoom(ctxParent context.Context) *room {
 		addUser:    make(chan *user),
 		removeUser: make(chan *user),
 		eventQueue: make(chan roomEvent),
-		broadcast:  make(chan roomEvent),
 	}
 }
