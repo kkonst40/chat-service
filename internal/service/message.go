@@ -52,7 +52,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	return messages, nil
 }
 
-func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {
+func (s *MessageService) CreateMessage(ctx context.Context, msgID, userID, chatID uuid.UUID, text string) (*model.Message, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("messageService.CreateMessage", "chatID", chatID)
 
@@ -60,20 +60,15 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 
-	newID, err := uuid.NewV7()
-	if err != nil {
-		return nil, err
-	}
-
 	message := &model.Message{
-		ID:        newID,
+		ID:        msgID,
 		UserID:    userID,
 		ChatID:    chatID,
 		Text:      text,
 		CreatedAt: time.Now(),
 	}
 
-	if err = s.messageRepository.CreateMessage(ctx, message); err != nil {
+	if err := s.messageRepository.CreateMessage(ctx, message); err != nil {
 		return nil, err
 	}
 	log.Debug("message created")

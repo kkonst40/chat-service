@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +16,7 @@ const (
 type user struct {
 	id   uuid.UUID
 	conn *websocket.Conn
-	send chan message
+	send chan roomEvent
 }
 
 func (u *user) readMessage(r *room) {
@@ -24,22 +25,30 @@ func (u *user) readMessage(r *room) {
 		u.conn.Close()
 	}()
 
-	u.conn.SetReadLimit(512 * 1024)
-	u.conn.SetReadDeadline(time.Now().Add(pongWait))
-	u.conn.SetPongHandler(func(string) error {
-		u.conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
-	})
+	//u.conn.SetReadLimit(512 * 1024)
+	//u.conn.SetReadDeadline(time.Now().Add(pongWait))
+	//u.conn.SetPongHandler(func(string) error {
+	//	u.conn.SetReadDeadline(time.Now().Add(pongWait))
+	//	return nil
+	//})
 
 	for {
-		_, messageBytes, err := u.conn.ReadMessage()
+		var receiveEvent roomEvent
+		err := u.conn.ReadJSON(&receiveEvent)
 		if err != nil {
+			fmt.Println("error reading json from socket")
 			break
 		}
-		r.broadcast <- message{
-			userID: u.id,
-			data:   messageBytes,
+
+		switch receiveEvent.Type {
+		case ActionCreate, ActionUpdate, ActionDelete:
+		default:
+			continue
 		}
+
+		receiveEvent.UserID = u.id
+
+		r.eventQueue <- receiveEvent
 	}
 }
 
@@ -53,15 +62,14 @@ func (u *user) writeMessage() {
 
 	for {
 		select {
-		case message, ok := <-u.send:
+		case event, ok := <-u.send:
 			if !ok {
+				fmt.Println("user send chan is closed")
 				return
 			}
-			msg := jsonMessage{
-				UserID: message.userID.String(),
-				Text:   string(message.data),
-			}
-			if err := u.conn.WriteJSON(msg); err != nil {
+
+			if err := u.conn.WriteJSON(event); err != nil {
+				fmt.Println("error writing json to socket")
 				return
 			}
 

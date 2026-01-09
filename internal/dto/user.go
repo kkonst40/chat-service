@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/model"
+)
 
 type GetUserResponse struct {
 	ID     uuid.UUID `json:"id"`
@@ -13,7 +16,7 @@ type GetChatUsersResponse struct {
 }
 
 type UpdateChatUserRoleRequest struct {
-	Role string `json:"role" binding:"required"`
+	Role model.Role `json:"role" binding:"required"`
 }
 
 type AddChatUsersRequest struct {

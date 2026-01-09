@@ -115,14 +115,8 @@ func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
 			return
 		}
 
-		var role model.Role
 		switch req.Role {
-		case "common":
-			role = model.Common
-		case "admin":
-			role = model.Admin
-		case "owner":
-			role = model.Owner
+		case model.Common, model.Admin, model.Owner:
 		default:
 			c.Error(&apperror.InvalidRequestError{
 				Msg: "Invalid user role name",
@@ -130,7 +124,7 @@ func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
 			return
 		}
 
-		err = h.userService.UpdateUserRole(ctx, chatID, userID, role, requesterID)
+		err = h.userService.UpdateUserRole(ctx, chatID, userID, req.Role, requesterID)
 		if err != nil {
 			c.Error(err)
 			return
