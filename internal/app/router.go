@@ -24,7 +24,15 @@ func NewRouter(
 	router.Use(middleware.Logger())
 	router.Use(middleware.Error())
 
-	router.GET("/connect/:chatId", middleware.DummyAuthH(), chatHandler.ConnectToChat(wsServer))
+	// for test
+	router.GET("/1", func(c *gin.Context) {
+		c.File("static/cd1.html")
+	})
+	router.GET("/2", func(c *gin.Context) {
+		c.File("static/cd2.html")
+	})
+
+	router.GET("/connect/:chatId", middleware.DummyAuthQ(), chatHandler.ConnectToChat(wsServer))
 
 	http := router.Group("/")
 	http.Use(middleware.CtxTimeout(3 * time.Second))

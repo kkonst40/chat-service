@@ -21,25 +21,15 @@ import (
 )
 
 type App struct {
-	server *http.Server
-	db     *sql.DB
+	httpServer *http.Server
+	wsServer   *ws.Server
+	db         *sql.DB
 }
 
 func New(cfg *config.Config) (*App, error) {
-	dbUrl := fmt.Sprintf("postgres://%v:%v@%v/%v",
-		cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.DBName)
-
-	db, err := sql.Open("pgx", dbUrl)
+	db, err := NewDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.DBName)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating db object: %v", err)
-	}
-
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("Failed to connect to the database: %v", err)
+		return nil, err
 	}
 
 	slog.Info("Successful connection to the database")
@@ -47,6 +37,12 @@ func New(cfg *config.Config) (*App, error) {
 	userRepo := postgres.NewUserRepository(db)
 	chatRepo := postgres.NewChatRepository(db)
 	messageRepo := postgres.NewMessageRepository(db)
+
+	// for test
+	// memDB := memory.NewDB()
+	// userRepo := memory.NewUserRepository(memDB)
+	// chatRepo := memory.NewChatRepository(memDB)
+	// messageRepo := memory.NewMessageRepository(memDB)
 
 	slog.Info("Repositories are initialized")
 
@@ -62,7 +58,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	slog.Info("Handlers are initialized")
 
-	wsServer := ws.NewWsServer(chatService, messageService)
+	wsServer := ws.NewServer(chatService, messageService)
 
 	slog.Info("WebSocket server is initialized")
 
@@ -74,14 +70,15 @@ func New(cfg *config.Config) (*App, error) {
 		cfg,
 	)
 
-	server := &http.Server{
+	httpServer := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
 	}
 
 	return &App{
-		server: server,
-		db:     db,
+		httpServer: httpServer,
+		wsServer:   wsServer,
+		//db:     db,
 	}, nil
 }
 
@@ -90,26 +87,47 @@ func (a *App) Run() error {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error(err.Error())
 			os.Exit(1)
 		}
 	}()
-	slog.Info(fmt.Sprintf("Server started on %v", a.server.Addr))
+	slog.Info("Server started", "address", a.httpServer.Addr)
 
 	<-quit
-	slog.Info("Shutting down server...")
+	slog.Warn("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := a.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("Server forced to shutdown: %v", err)
+	a.wsServer.Shutdown()
+	if err := a.httpServer.Shutdown(ctx); err != nil {
+		slog.Warn("Server forced to shutdown", "error", err.Error())
 	}
 	if err := a.db.Close(); err != nil {
-		return fmt.Errorf("DB close error: %v", err)
+		slog.Warn("DB close error", "error", err.Error())
 	}
 
 	slog.Info("Server exiting")
 	return nil
+}
+
+func NewDB(user, pwd, host, dbName string) (*sql.DB, error) {
+	dbUrl := fmt.Sprintf("postgres://%v:%v@%v/%v",
+		user, pwd, host, dbName)
+
+	db, err := sql.Open("pgx", dbUrl)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating db object: %v", err)
+	}
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("Failed to connect to the database: %v", err)
+	}
+
+	return db, nil
 }
