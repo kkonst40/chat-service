@@ -10,7 +10,8 @@ import (
 
 const (
 	pongWait   = 60 * time.Second
-	pingPeriod = 55 * time.Second
+	pingPeriod = 45 * time.Second
+	writeWait  = 10 * time.Second
 )
 
 type user struct {
@@ -40,6 +41,8 @@ func (u *user) readMessage(r *room) {
 			break
 		}
 
+		u.conn.SetReadDeadline(time.Now().Add(pongWait))
+
 		switch receiveEvent.Type {
 		case ActionCreate, ActionUpdate, ActionDelete:
 		default:
@@ -56,6 +59,7 @@ func (u *user) writeMessage() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
+		u.conn.SetWriteDeadline(time.Now().Add(writeWait))
 		u.conn.WriteMessage(websocket.CloseMessage, []byte{})
 		u.conn.Close()
 	}()
@@ -63,6 +67,7 @@ func (u *user) writeMessage() {
 	for {
 		select {
 		case event, ok := <-u.send:
+			u.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				fmt.Println("user send chan is closed")
 				return
@@ -74,7 +79,7 @@ func (u *user) writeMessage() {
 			}
 
 		case <-ticker.C:
-			u.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			u.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := u.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

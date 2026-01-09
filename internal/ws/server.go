@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -22,12 +23,16 @@ type Server struct {
 	mu             sync.Mutex
 }
 
-var upgraderProd = websocket.Upgrader{
+var upgrader = websocket.Upgrader{
 	ReadBufferSize:   4096,
 	WriteBufferSize:  4096,
-	HandshakeTimeout: 10,
+	HandshakeTimeout: 10 * time.Second,
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+
 		u, err := url.Parse(origin)
 		if err != nil {
 			return false
@@ -40,17 +45,6 @@ var upgraderProd = websocket.Upgrader{
 	},
 }
 
-var upgraderDev = websocket.Upgrader{
-	ReadBufferSize:   4096,
-	WriteBufferSize:  4096,
-	HandshakeTimeout: 10,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-var upgraderEmpty = websocket.Upgrader{}
-
 func NewWsServer(chatService *service.ChatService, messageService *service.MessageService) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Server{
@@ -62,7 +56,7 @@ func NewWsServer(chatService *service.ChatService, messageService *service.Messa
 }
 
 func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userId uuid.UUID, chatId uuid.UUID) error {
-	conn, err := upgraderEmpty.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return &apperror.ChatConnectionError{
 			Msg: err.Error(),
@@ -130,6 +124,7 @@ func (s *Server) runRoom(room *room, chatId uuid.UUID) {
 				log.Println(err.Error())
 				continue
 			}
+
 			for user := range room.users {
 				select {
 				case user.send <- event:
@@ -178,31 +173,29 @@ func (s *Server) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, erro
 		}()
 
 	case ActionUpdate:
-		go func() {
-			err := s.messageService.UpdateMessage(
-				s.ctx,
-				event.MsgID,
-				event.Text,
-				event.UserID,
-			)
+		err := s.messageService.UpdateMessage(
+			s.ctx,
+			event.MsgID,
+			event.Text,
+			event.UserID,
+		)
 
-			if err != nil {
-				log.Println("updating msg error")
-			}
-		}()
+		if err != nil {
+			log.Println("updating msg error")
+			return roomEvent{}, err
+		}
 
 	case ActionDelete:
-		go func() {
-			err := s.messageService.DeleteMessage(
-				s.ctx,
-				event.MsgID,
-				event.UserID,
-			)
+		err := s.messageService.DeleteMessage(
+			s.ctx,
+			event.MsgID,
+			event.UserID,
+		)
 
-			if err != nil {
-				log.Println("deleting msg error")
-			}
-		}()
+		if err != nil {
+			log.Println("deleting msg error")
+			return roomEvent{}, err
+		}
 	}
 
 	return event, nil
