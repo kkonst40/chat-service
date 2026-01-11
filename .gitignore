@@ -29,6 +29,4 @@ go.work.sum
 config*.json
 
 # Editor/IDE
-# .idea/
 .vscode/
-static/
