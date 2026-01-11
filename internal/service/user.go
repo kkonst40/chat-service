@@ -1,8 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/apperror"
@@ -13,11 +16,18 @@ import (
 
 type UserService struct {
 	userRepository repository.UserRepository
+	client         *http.Client
+	ssoURL         string
 }
 
-func NewUserService(newUserRepository repository.UserRepository) *UserService {
+func NewUserService(
+	newUserRepository repository.UserRepository,
+	ssoURL string,
+) *UserService {
 	return &UserService{
 		userRepository: newUserRepository,
+		ssoURL:         ssoURL,
+		client:         &http.Client{},
 	}
 }
 
@@ -43,7 +53,7 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	return user, nil
 }
 
-func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIds []uuid.UUID, requesterID uuid.UUID) error {
+func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID, requesterID uuid.UUID) error {
 	log := logger.FromContext(ctx)
 	log.Debug("userService.AddChatUsers", "chatID", chatID)
 
@@ -51,7 +61,12 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userId
 		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
-	err := s.userRepository.AddChatUsers(ctx, chatID, userIds)
+	existingUserIDs, err := s.existMany(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+
+	err = s.userRepository.AddChatUsers(ctx, chatID, existingUserIDs)
 	if err != nil {
 		return err
 	}
@@ -143,4 +158,50 @@ func (s *UserService) isUserInChat(ctx context.Context, chatID, userID uuid.UUID
 	}
 
 	return result
+}
+
+func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
+	jsonData, err := json.Marshal(userIDs)
+	if err != nil {
+		return nil, &apperror.InternalError{
+			Msg: fmt.Sprintf("failed to marshal userIDs: %v", err.Error()),
+		}
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		fmt.Sprintf("%v/exist", s.ssoURL),
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return nil, &apperror.InternalError{
+			Msg: fmt.Sprintf("failed to create request: %v", err.Error()),
+		}
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, &apperror.ExternalServiceError{
+			Msg: fmt.Sprintf("user service unreachable: %v", err.Error()),
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, &apperror.ExternalServiceError{
+			Msg: fmt.Sprintf("user service returned error status: %d", resp.StatusCode),
+		}
+	}
+
+	var existingIDs []uuid.UUID
+	if err := json.NewDecoder(resp.Body).Decode(&existingIDs); err != nil {
+		return nil, &apperror.ExternalServiceError{
+			Msg: fmt.Sprintf("failed to decode response: %v", err.Error()),
+		}
+	}
+
+	return existingIDs, nil
 }

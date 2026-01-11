@@ -178,7 +178,7 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) gin.HandlerFunc {
 			return
 		}
 
-		if !h.chatService.DoesChatExist(ctx, chatID) {
+		if !h.chatService.AllowedToConnect(ctx, chatID, requesterID) {
 			c.Error(&apperror.NotFoundError{
 				Msg: fmt.Sprintf("chat (%v) not found", chatID),
 			})

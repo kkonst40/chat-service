@@ -122,3 +122,7 @@ func (s *ChatService) DoesChatExist(ctx context.Context, chatID uuid.UUID) bool 
 
 	return exists
 }
+
+func (s *ChatService) AllowedToConnect(ctx context.Context, chatID, userID uuid.UUID) bool {
+	return s.userService.isUserInChat(ctx, chatID, userID)
+}
