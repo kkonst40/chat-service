@@ -22,6 +22,7 @@ func Error() gin.HandlerFunc {
 			log := logger.FromContext(c.Request.Context())
 
 			var (
+				internalErr *apperror.InternalError
 				nfErr       *apperror.NotFoundError
 				invReqErr   *apperror.InvalidRequestError
 				frbErr      *apperror.ForbiddenError
@@ -31,6 +32,11 @@ func Error() gin.HandlerFunc {
 			)
 
 			switch {
+			case errors.As(err, &internalErr):
+				statusCode = http.StatusInternalServerError
+				message = "Internal server error"
+				log.Error("Internal server error", "errors", err)
+
 			case errors.Is(err, context.DeadlineExceeded):
 				statusCode = http.StatusGatewayTimeout
 				message = "The request took too long to process"

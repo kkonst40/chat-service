@@ -1,5 +1,14 @@
 package apperror
 
+// should be renamed
+type InternalError struct {
+	Msg string
+}
+
+func (e *InternalError) Error() string {
+	return e.Msg
+}
+
 type NotFoundError struct {
 	Msg string
 }
@@ -48,9 +57,19 @@ func (e *ChatConnectionError) Error() string {
 	return e.Msg
 }
 
+type ExternalServiceError struct {
+	Msg string
+}
+
+func (e *ExternalServiceError) Error() string {
+	return e.Msg
+}
+
+var _ error = (*InternalError)(nil)
 var _ error = (*NotFoundError)(nil)
 var _ error = (*ForbiddenError)(nil)
 var _ error = (*InvalidRequestError)(nil)
 var _ error = (*UnauthorizedError)(nil)
 var _ error = (*DBError)(nil)
 var _ error = (*ChatConnectionError)(nil)
+var _ error = (*ExternalServiceError)(nil)
