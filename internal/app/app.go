@@ -39,14 +39,14 @@ func New(cfg *config.Config) (*App, error) {
 	messageRepo := postgres.NewMessageRepository(db)
 
 	// for test
-	// memDB := memory.NewDB()
-	// userRepo := memory.NewUserRepository(memDB)
-	// chatRepo := memory.NewChatRepository(memDB)
-	// messageRepo := memory.NewMessageRepository(memDB)
+	//memDB := memory.NewDB()
+	//userRepo := memory.NewUserRepository(memDB)
+	//chatRepo := memory.NewChatRepository(memDB)
+	//messageRepo := memory.NewMessageRepository(memDB)
 
 	slog.Info("Repositories are initialized")
 
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, cfg.SSOURL)
 	chatService := service.NewChatService(chatRepo, userService)
 	messageService := service.NewMessageService(messageRepo, chatService, userService)
 
@@ -78,13 +78,13 @@ func New(cfg *config.Config) (*App, error) {
 	return &App{
 		httpServer: httpServer,
 		wsServer:   wsServer,
-		//db:     db,
+		db:         db,
 	}, nil
 }
 
 func (a *App) Run() error {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	go func() {
 		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -94,7 +94,7 @@ func (a *App) Run() error {
 	}()
 	slog.Info("Server started", "address", a.httpServer.Addr)
 
-	<-quit
+	<-appCtx.Done()
 	slog.Warn("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
