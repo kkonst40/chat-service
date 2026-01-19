@@ -83,7 +83,7 @@ func New(cfg *config.Config) (*App, error) {
 }
 
 func (a *App) Run() error {
-	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
 	go func() {
