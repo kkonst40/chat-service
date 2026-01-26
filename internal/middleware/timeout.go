@@ -18,20 +18,10 @@ func CtxTimeout(d time.Duration) gin.HandlerFunc {
 		defer cancel()
 
 		c.Request = c.Request.WithContext(ctx)
+		c.Next()
 
-		finished := make(chan struct{})
-		go func() {
-			c.Next()
-			finished <- struct{}{}
-		}()
-
-		select {
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				c.Error(ctx.Err())
-			}
-		case <-finished:
-			return
+		if ctx.Err() == context.DeadlineExceeded {
+			c.Error(ctx.Err())
 		}
 	}
 }
