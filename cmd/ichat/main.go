@@ -14,7 +14,7 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("Config loading error", "error", err.Error())
+		slog.Error("Config loading", "error", err.Error())
 		slog.Info("Server exiting")
 		os.Exit(1)
 	}
@@ -24,14 +24,14 @@ func main() {
 
 	application, err := app.New(cfg)
 	if err != nil {
-		slog.Error("Application creating error", "error", err.Error())
+		slog.Error("Application creating", "error", err.Error())
 		slog.Info("Server exiting")
 		os.Exit(1)
 	}
 
 	err = application.Run()
 	if err != nil {
-		slog.Error("Application running error", "error", err.Error())
+		slog.Error("Application running", "error", err.Error())
 		slog.Info("Server exiting")
 		os.Exit(1)
 	}
