@@ -16,17 +16,20 @@ type MessageService struct {
 	messageRepository repository.MessageRepository
 	chatService       *ChatService
 	userService       *UserService
+	textMaxLength     int
 }
 
 func NewMessageService(
 	newMessageRepository repository.MessageRepository,
 	newChatService *ChatService,
 	newUserService *UserService,
+	textMaxLength int,
 ) *MessageService {
 	service := MessageService{
 		messageRepository: newMessageRepository,
 		chatService:       newChatService,
 		userService:       newUserService,
+		textMaxLength:     textMaxLength,
 	}
 
 	return &service
@@ -64,7 +67,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, msgID, userID, chatI
 		ID:        msgID,
 		UserID:    userID,
 		ChatID:    chatID,
-		Text:      text,
+		Text:      limitText(text, s.textMaxLength),
 		CreatedAt: time.Now(),
 	}
 
@@ -93,7 +96,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 		ID:        msgID,
 		UserID:    message.UserID,
 		ChatID:    message.ChatID,
-		Text:      text,
+		Text:      limitText(text, s.textMaxLength),
 		CreatedAt: message.CreatedAt,
 	}
 
@@ -145,4 +148,19 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 	log.Debug("message deleted")
 
 	return nil
+}
+
+func limitText(s string, maxChars int) string {
+	if len(s) <= maxChars {
+		return s
+	}
+
+	count := 0
+	for byteIndex := range s {
+		if count == maxChars {
+			return s[:byteIndex]
+		}
+		count++
+	}
+	return s
 }

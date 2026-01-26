@@ -48,7 +48,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	userService := service.NewUserService(userRepo, cfg.SSOURL)
 	chatService := service.NewChatService(chatRepo, userService)
-	messageService := service.NewMessageService(messageRepo, chatService, userService)
+	messageService := service.NewMessageService(messageRepo, chatService, userService, 4096)
 
 	slog.Info("Services are initialized")
 
