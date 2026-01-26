@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/apperror"
@@ -168,8 +169,11 @@ func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uui
 		}
 	}
 
+	ssoCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(
-		ctx,
+		ssoCtx,
 		"POST",
 		fmt.Sprintf("%v/exist", s.ssoURL),
 		bytes.NewBuffer(jsonData),
