@@ -35,7 +35,7 @@ func NewMessageService(
 	return &service
 }
 
-func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]model.Message, error) {
+func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, from, count int64, requesterID uuid.UUID) ([]model.Message, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("messageService.GetChatMessages", "chatID", chatID)
 
@@ -46,7 +46,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
-	messages, err := s.messageRepository.GetChatMessages(ctx, chatID)
+	messages, err := s.messageRepository.GetChatMessages(ctx, chatID, from, count)
 	if err != nil {
 		return nil, err
 	}

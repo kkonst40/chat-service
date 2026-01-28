@@ -33,7 +33,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	return message, nil
 }
 
-func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from, count int64) ([]model.Message, error) {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
@@ -48,7 +48,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 		return messages[i].CreatedAt.After(messages[j].CreatedAt)
 	})
 
-	return messages, nil
+	return messages[from : from+count], nil
 }
 
 func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Message) error {

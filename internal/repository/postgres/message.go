@@ -52,18 +52,20 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	return &msg, nil
 }
 
-func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID) ([]model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from, count int64) ([]model.Message, error) {
 	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, user_id, chat_id, text, created_at
 		FROM messages
 		WHERE chat_id = $1
 		ORDER BY created_at DESC
+		LIMIT $2
+		OFFSET $3
 	`
 
 	log.Debug("getting chat messages from DB", "chatID", chatID)
 
-	rows, err := r.db.QueryContext(ctx, query, chatID)
+	rows, err := r.db.QueryContext(ctx, query, chatID, count, from)
 	if err != nil {
 		return nil, &apperror.DBError{Msg: err.Error()}
 	}

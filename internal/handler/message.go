@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -36,7 +37,23 @@ func (h *MessageHandler) GetChatMessages() gin.HandlerFunc {
 			return
 		}
 
-		messages, err := h.messageService.GetChatMessages(ctx, chatID, requesterID)
+		from, err := strconv.ParseInt(c.Query("from"), 10, 64)
+		if err != nil {
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid 'from' param in query",
+			})
+			return
+		}
+
+		count, err := strconv.ParseInt(c.Query("from"), 10, 64)
+		if err != nil {
+			c.Error(&apperror.InvalidRequestError{
+				Msg: "Invalid 'from' param in query",
+			})
+			return
+		}
+
+		messages, err := h.messageService.GetChatMessages(ctx, chatID, from, count, requesterID)
 		if err != nil {
 			c.Error(err)
 			return
