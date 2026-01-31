@@ -23,11 +23,11 @@ type JWTConfig struct {
 }
 
 type Config struct {
-	Env    string    `json:"env"`
-	Port   string    `json:"port"`
-	SSOURL string    `json:"ssoURL"`
-	JWT    JWTConfig `json:"jwt"`
-	DB     DBConfig  `json:"db"`
+	Env        string    `json:"env"`
+	Port       string    `json:"port"`
+	SSOAddress string    `json:"ssoAddress"`
+	JWT        JWTConfig `json:"jwt"`
+	DB         DBConfig  `json:"db"`
 }
 
 func Load() (*Config, error) {
@@ -60,9 +60,9 @@ func loadConfigEnv() (*Config, error) {
 	}
 
 	cfg := &Config{
-		Env:    getEnv("ENV"),
-		Port:   getEnv("PORT"),
-		SSOURL: getEnv("SSO_URL"),
+		Env:        getEnv("ENV"),
+		Port:       getEnv("PORT"),
+		SSOAddress: getEnv("SSO_URL"),
 		JWT: JWTConfig{
 			SecretKey:  getEnv("JWT_SECRET"),
 			Issuer:     getEnv("JWT_ISSUER"),
