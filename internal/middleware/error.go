@@ -75,7 +75,7 @@ func Error() gin.HandlerFunc {
 			default:
 				statusCode = http.StatusInternalServerError
 				message = "Internal server error"
-				log.Error("Internal server error")
+				log.Error("Internal server error", "errors", err.Error())
 			}
 
 			c.JSON(statusCode, gin.H{
