@@ -1,15 +1,13 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/apperror"
+	pb "github.com/kkonst40/ichat/internal/gen/user"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -17,18 +15,16 @@ import (
 
 type UserService struct {
 	userRepository repository.UserRepository
-	client         *http.Client
-	ssoURL         string
+	ssoClient      pb.UserServiceClient
 }
 
 func NewUserService(
 	newUserRepository repository.UserRepository,
-	ssoURL string,
+	ssoClient pb.UserServiceClient,
 ) *UserService {
 	return &UserService{
 		userRepository: newUserRepository,
-		ssoURL:         ssoURL,
-		client:         &http.Client{},
+		ssoClient:      ssoClient,
 	}
 }
 
@@ -162,49 +158,31 @@ func (s *UserService) isUserInChat(ctx context.Context, chatID, userID uuid.UUID
 }
 
 func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
-	jsonData, err := json.Marshal(userIDs)
-	if err != nil {
-		return nil, &apperror.InternalError{
-			Msg: fmt.Sprintf("failed to marshal userIDs: %v", err.Error()),
-		}
+	idsStrings := make([]string, len(userIDs))
+	for i, id := range userIDs {
+		idsStrings[i] = id.String()
 	}
 
-	ssoCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	ssoCtx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(
-		ssoCtx,
-		"POST",
-		fmt.Sprintf("%v/exist", s.ssoURL),
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		return nil, &apperror.InternalError{
-			Msg: fmt.Sprintf("failed to create request: %v", err.Error()),
-		}
-	}
+	resp, err := s.ssoClient.Exist(ssoCtx, &pb.ExistRequest{
+		Ids: idsStrings,
+	})
 
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, &apperror.ExternalServiceError{
-			Msg: fmt.Sprintf("user service unreachable: %v", err.Error()),
-		}
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, &apperror.ExternalServiceError{
-			Msg: fmt.Sprintf("user service returned error status: %d", resp.StatusCode),
+			Msg: fmt.Sprintf("sso service call failed: %v", err.Error()),
 		}
 	}
 
-	var existingIDs []uuid.UUID
-	if err := json.NewDecoder(resp.Body).Decode(&existingIDs); err != nil {
-		return nil, &apperror.ExternalServiceError{
-			Msg: fmt.Sprintf("failed to decode response: %v", err.Error()),
+	existingIDs := make([]uuid.UUID, 0, len(resp.GetExistingIds()))
+	for _, idStr := range resp.GetExistingIds() {
+		parsedID, err := uuid.Parse(idStr)
+		if err != nil {
+			continue
 		}
+		existingIDs = append(existingIDs, parsedID)
 	}
 
 	return existingIDs, nil

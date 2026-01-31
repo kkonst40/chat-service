@@ -12,10 +12,13 @@ import (
 	"time"
 
 	"github.com/kkonst40/ichat/internal/config"
+	pb "github.com/kkonst40/ichat/internal/gen/user"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/repository/postgres"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -34,19 +37,27 @@ func New(cfg *config.Config) (*App, error) {
 
 	slog.Info("Successful connection to the database")
 
+	conn, err := grpc.NewClient(
+		cfg.SSOAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	userRepo := postgres.NewUserRepository(db)
 	chatRepo := postgres.NewChatRepository(db)
 	messageRepo := postgres.NewMessageRepository(db)
 
 	// for test
-	//memDB := memory.NewDB()
-	//userRepo := memory.NewUserRepository(memDB)
-	//chatRepo := memory.NewChatRepository(memDB)
-	//messageRepo := memory.NewMessageRepository(memDB)
+	// memDB := memory.NewDB()
+	// userRepo := memory.NewUserRepository(memDB)
+	// chatRepo := memory.NewChatRepository(memDB)
+	// messageRepo := memory.NewMessageRepository(memDB)
 
 	slog.Info("Repositories are initialized")
 
-	userService := service.NewUserService(userRepo, cfg.SSOURL)
+	userService := service.NewUserService(userRepo, pb.NewUserServiceClient(conn))
 	chatService := service.NewChatService(chatRepo, userService)
 	messageService := service.NewMessageService(messageRepo, chatService, userService, 4096)
 
