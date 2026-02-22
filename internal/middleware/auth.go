@@ -1,12 +1,14 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/logger"
 )
 
@@ -17,32 +19,50 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func Auth(cfg *config.Config) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+func Auth(cfg *config.Config, next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		log := logger.FromContext(ctx)
 
-		tokenString, err := c.Cookie(cfg.JWT.CookieName)
+		token, err := r.Cookie(cfg.JWT.CookieName)
 		if err != nil {
-			c.Error(&apperror.UnauthorizedError{Msg: "Token not found"})
-			c.Abort()
+			log.Error("Token not found", "error", err.Error())
+			handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
 			return
 		}
 
-		log.Info("", "token", tokenString)
+		log.Info("", "token", token.Value)
 
-		claims, err := validateToken(tokenString, cfg)
+		claims, err := validateToken(token.Value, cfg)
 		if err != nil {
 			log.Error("Token validation error", "error", err.Error())
-			c.Error(&apperror.UnauthorizedError{Msg: "Invalid token"})
-			c.Abort()
+			handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
 			return
 		}
-		c.Set("requesterID", claims.ID.String())
 
 		log.Info("", "userID", claims.ID)
 
-		c.Next()
+		ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+func DummyAuthQ(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := r.URL.Query().Get("userId")
+		ctx := context.WithValue(r.Context(), "requesterID", userID)
+
+		next(w, r.WithContext(ctx))
+	}
+}
+
+func DummyAuthH(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := r.Header.Get("UserID")
+		ctx := context.WithValue(r.Context(), "requesterID", userID)
+
+		next(w, r.WithContext(ctx))
 	}
 }
 
