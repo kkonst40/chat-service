@@ -14,6 +14,7 @@ import (
 	"github.com/kkonst40/ichat/internal/config"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 	"github.com/kkonst40/ichat/internal/handler"
+	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/repository/postgres"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
@@ -57,7 +58,8 @@ func New(cfg *config.Config) (*App, error) {
 
 	slog.Info("Repositories are initialized")
 
-	userService := service.NewUserService(userRepo, pb.NewUserServiceClient(conn))
+	ssoClient := sso.NewSSOClient(pb.NewUserServiceClient(conn))
+	userService := service.NewUserService(userRepo, ssoClient)
 	chatService := service.NewChatService(chatRepo, userService)
 	messageService := service.NewMessageService(messageRepo, chatService, userService, 4096)
 

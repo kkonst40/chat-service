@@ -3,11 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/apperror"
-	pb "github.com/kkonst40/ichat/internal/gen/user"
+	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -15,12 +14,12 @@ import (
 
 type UserService struct {
 	userRepository repository.UserRepository
-	ssoClient      pb.UserServiceClient
+	ssoClient      *sso.SSOClient
 }
 
 func NewUserService(
 	newUserRepository repository.UserRepository,
-	ssoClient pb.UserServiceClient,
+	ssoClient *sso.SSOClient,
 ) *UserService {
 	return &UserService{
 		userRepository: newUserRepository,
@@ -158,32 +157,5 @@ func (s *UserService) isUserInChat(ctx context.Context, chatID, userID uuid.UUID
 }
 
 func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
-	idsStrings := make([]string, len(userIDs))
-	for i, id := range userIDs {
-		idsStrings[i] = id.String()
-	}
-
-	ssoCtx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	resp, err := s.ssoClient.Exist(ssoCtx, &pb.ExistRequest{
-		Ids: idsStrings,
-	})
-
-	if err != nil {
-		return nil, &apperror.ExternalServiceError{
-			Msg: fmt.Sprintf("sso service call failed: %v", err.Error()),
-		}
-	}
-
-	existingIDs := make([]uuid.UUID, 0, len(resp.GetExistingIds()))
-	for _, idStr := range resp.GetExistingIds() {
-		parsedID, err := uuid.Parse(idStr)
-		if err != nil {
-			continue
-		}
-		existingIDs = append(existingIDs, parsedID)
-	}
-
-	return existingIDs, nil
+	return s.ssoClient.ExistMany(ctx, userIDs)
 }
