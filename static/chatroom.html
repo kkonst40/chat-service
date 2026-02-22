@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Простой чат</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #messages {
+            border: 1px solid #ccc;
+            height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            position: relative;
+            /*group: hover;*/
+        }
+
+        .my-message {
+            background: #d1e7ff;
+            text-align: right;
+        }
+
+        /* Кнопка удаления */
+        .delete-btn {
+            cursor: pointer;
+            color: #ff4444;
+            margin-left: 10px;
+            font-size: 12px;
+            text-decoration: none;
+            opacity: 0.6;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        input {
+            width: 70%;
+        }
+
+        button {
+            width: 25%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Простой чат</h1>
+    <div id="messages"></div>
+    <div>
+        <input type="text" id="messageInput" placeholder="Введите сообщение..." autocomplete="off">
+        <button id="sendButton">Отправить</button>
+    </div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const chatId = "018f95a6-8d27-7e03-822c-6a81ce0d1f4b";
+        const userId = "019bad77-a48a-712b-af62-65e0cc331079";
+
+        let ws;
+        let reconnectAttempts = 0;
+        const maxReconnectDelay = 5000;
+
+        async function loadHistory() {
+            try {
+                const response = await fetch(`chatmessages/${chatId}`, {
+                    method: 'GET',
+                    //headers: { 'UserID': userId },
+                    credentials: "include"
+                });
+
+                if (!response.ok) throw new Error('Ошибка при загрузке истории');
+
+                const history = await response.json();
+                messagesDiv.innerHTML = '';
+
+                // Проходим по истории и передаем id сообщения
+                history.messages.slice().reverse().forEach(msg => {
+                    const isMe = msg.userId === userId;
+                    const senderName = isMe ? 'Я' : msg.userId;
+                    const type = isMe ? 'me' : 'other';
+
+                    addMessage(senderName, msg.text, type, msg.id);
+                });
+
+                connectWebSocket();
+            } catch (error) {
+                console.error('Ошибка:', error);
+                addMessage('Система', 'Не удалось загрузить историю', 'system');
+                setTimeout(connectWebSocket, 2000);
+            }
+        }
+
+        function connectWebSocket() {
+            if (ws && ws.readyState === WebSocket.OPEN) return;
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/connect/${chatId}`);
+
+            ws.onopen = () => {
+                addMessage('Система', 'Подключено', 'system');
+                reconnectAttempts = 0;
+            };
+
+            ws.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    // 1. Обработка удаления сообщения от сервера
+                    if (data.type === "DELETE") {
+                        const elementToRemove = document.querySelector(`[data-message-id="${data.messageId}"]`);
+                        if (elementToRemove) elementToRemove.remove();
+                        return;
+                    }
+                    if (data.type === "CREATE") {
+                        // 2. Обработка новых сообщений (CREATE или обычный формат)
+                        const isMe = data.userId === userId || data.userId === 'me';
+                        const sender = isMe ? 'Я' : (data.userId === 'system' ? 'Система' : data.userId);
+                        const type = isMe ? 'me' : (data.userId === 'system' ? 'system' : 'other');
+
+                        addMessage(sender, data.text, type, data.messageId);
+                    }
+                } catch (error) {
+                    console.error('Ошибка парсинга:', error);
+                }
+            };
+
+            ws.onclose = (e) => {
+                addMessage('Система', 'Связь прервана', 'system');
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), maxReconnectDelay);
+                reconnectAttempts++;
+                setTimeout(connectWebSocket, delay);
+            };
+
+            ws.onerror = () => ws.close();
+        }
+
+        function sendWsMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            const eventMsg = { type: "CREATE", text: text };
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(eventMsg));
+                messageInput.value = '';
+            }
+        }
+
+        // Функция для отправки запроса на удаление
+        function deleteMessage(messageId) {
+            const eventMsg = {
+                type: "DELETE",
+                messageId: messageId
+            };
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(eventMsg));
+            }
+        }
+
+        function addMessage(sender, text, type, id = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+
+            // Запоминаем ID сообщения в атрибуте HTML элемента
+            if (id) {
+                messageDiv.setAttribute('data-message-id', id);
+            }
+
+            let html = `<strong>${sender}:</strong> <span>${escapeHtml(text)}</span>`;
+
+            // Добавляем кнопку удаления только для обычных сообщений (не системных)
+            if (type !== 'system' && id) {
+                html += ` <span class="delete-btn" onclick="deleteMessage('${id}')" title="Удалить">❌</span>`;
+            }
+
+            messageDiv.innerHTML = html;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        sendButton.addEventListener('click', sendWsMessage);
+        messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendWsMessage(); });
+
+        loadHistory();
+    </script>
+</body>
+
+</html>
