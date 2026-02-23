@@ -19,51 +19,53 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func Auth(cfg *config.Config, next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		log := logger.FromContext(ctx)
+func Auth(cfg *config.Config) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			log := logger.FromContext(ctx)
 
-		token, err := r.Cookie(cfg.JWT.CookieName)
-		if err != nil {
-			log.Error("Token not found", "error", err.Error())
-			handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
-			return
-		}
+			token, err := r.Cookie(cfg.JWT.CookieName)
+			if err != nil {
+				log.Error("Token not found", "error", err.Error())
+				handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
+				return
+			}
 
-		log.Info("", "token", token.Value)
+			log.Info("", "token", token.Value)
 
-		claims, err := validateToken(token.Value, cfg)
-		if err != nil {
-			log.Error("Token validation error", "error", err.Error())
-			handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
-			return
-		}
+			claims, err := validateToken(token.Value, cfg)
+			if err != nil {
+				log.Error("Token validation error", "error", err.Error())
+				handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
+				return
+			}
 
-		log.Info("", "userID", claims.ID)
+			log.Info("", "userID", claims.ID)
 
-		ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
+			ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
 
-		next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
 }
 
-func DummyAuthQ(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func DummyAuthQ(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := r.URL.Query().Get("userId")
 		ctx := context.WithValue(r.Context(), "requesterID", userID)
 
-		next(w, r.WithContext(ctx))
-	}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
-func DummyAuthH(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func DummyAuthH(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("UserID")
 		ctx := context.WithValue(r.Context(), "requesterID", userID)
 
-		next(w, r.WithContext(ctx))
-	}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func validateToken(tokenString string, cfg *config.Config) (*UserClaims, error) {
