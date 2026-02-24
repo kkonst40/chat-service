@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -41,10 +41,10 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
 	}
 	if err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, &errs.DBError{Msg: err.Error()}
 	}
 
 	return &user, nil
@@ -62,7 +62,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, &errs.DBError{Msg: err.Error()}
 	}
 	defer rows.Close()
 
@@ -74,14 +74,14 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 			&user.ChatID,
 			&user.Role,
 		); err != nil {
-			return nil, &apperror.DBError{Msg: err.Error()}
+			return nil, &errs.DBError{Msg: err.Error()}
 		}
 
 		users = append(users, user)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, &errs.DBError{Msg: err.Error()}
 	}
 
 	return users, nil
@@ -110,7 +110,7 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 	}
 
 	if _, err := r.db.ExecContext(ctx, queryBuilder.String(), args...); err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return &errs.DBError{Msg: err.Error()}
 	}
 
 	return nil
@@ -126,7 +126,7 @@ func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, u
 	log.Debug("deleting chat user in DB", "chatID", chatID, "userID", userID)
 
 	if _, err := r.db.ExecContext(ctx, query, userID, chatID); err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return &errs.DBError{Msg: err.Error()}
 	}
 
 	return nil
@@ -144,16 +144,16 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 
 	res, err := r.db.ExecContext(ctx, query, newRole, userID, chatID)
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return &errs.DBError{Msg: err.Error()}
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return &errs.DBError{Msg: err.Error()}
 	}
 
 	if rowsAffected == 0 {
-		return &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return &errs.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
 	}
 
 	return nil
@@ -178,7 +178,7 @@ func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.U
 	)
 
 	if err != nil {
-		return false, &apperror.DBError{Msg: err.Error()}
+		return false, &errs.DBError{Msg: err.Error()}
 	}
 
 	return exists, nil

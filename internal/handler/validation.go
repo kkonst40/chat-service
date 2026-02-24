@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 )
 
 func NewValidator() *validator.Validate {
@@ -23,7 +23,7 @@ func NewValidator() *validator.Validate {
 	return v
 }
 
-func handleValidationErr(err error) *apperror.InvalidRequestError {
+func handleValidationErr(err error) *errs.InvalidRequestError {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		fields := make([]string, 0, len(ve))
@@ -31,12 +31,12 @@ func handleValidationErr(err error) *apperror.InvalidRequestError {
 			fields = append(fields, fe.Field())
 		}
 
-		return &apperror.InvalidRequestError{
+		return &errs.InvalidRequestError{
 			Msg: "Invalid fields in request body: " + strings.Join(fields, ", "),
 		}
 	}
 
-	return &apperror.InvalidRequestError{
+	return &errs.InvalidRequestError{
 		Msg: "Invalid request body",
 	}
 }

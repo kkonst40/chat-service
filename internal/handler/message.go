@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
 )
@@ -46,7 +46,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 	messages, err := h.messageService.GetChatMessages(ctx, chatID, from, count, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}

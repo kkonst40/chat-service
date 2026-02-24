@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/service"
@@ -37,7 +37,7 @@ func (h *UserHandler) GetChatUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, err := h.userService.GetChatUsers(ctx, chatID, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -72,14 +72,14 @@ func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.AddChatUsersRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := apperror.MapError(handleValidationErr(err), log)
+		statusCode, resp := errs.MapError(handleValidationErr(err), log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
 
 	err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -106,7 +106,7 @@ func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request)
 
 	var req dto.UpdateChatUserRoleRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := apperror.MapError(handleValidationErr(err), log)
+		statusCode, resp := errs.MapError(handleValidationErr(err), log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -120,7 +120,7 @@ func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request)
 
 	err = h.userService.UpdateUserRole(ctx, chatID, userID, req.Role, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -147,7 +147,7 @@ func (h *UserHandler) DeleteChatUser(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.DeleteChatUser(ctx, chatID, userID, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}

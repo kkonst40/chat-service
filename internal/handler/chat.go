@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/kkonst40/ichat/internal/ws"
@@ -37,7 +37,7 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 
 	chat, err := h.chatService.GetChat(ctx, chatID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -57,7 +57,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 	chats, err := h.chatService.GetUserChats(ctx, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -85,14 +85,14 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.CreateChatRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := apperror.MapError(handleValidationErr(err), log)
+		statusCode, resp := errs.MapError(handleValidationErr(err), log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
 
 	chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -117,14 +117,14 @@ func (h *ChatHandler) UpdateChatName(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.UpdateChatNameRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := apperror.MapError(handleValidationErr(err), log)
+		statusCode, resp := errs.MapError(handleValidationErr(err), log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
 
 	err = h.chatService.UpdateChatName(ctx, chatID, req.Name, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -146,7 +146,7 @@ func (h *ChatHandler) DeleteChat(w http.ResponseWriter, r *http.Request) {
 
 	err = h.chatService.DeleteChat(ctx, chatID, requesterID)
 	if err != nil {
-		statusCode, resp := apperror.MapError(err, log)
+		statusCode, resp := errs.MapError(err, log)
 		WriteJSON(w, statusCode, resp, log)
 		return
 	}
@@ -175,7 +175,7 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) http.HandlerFunc {
 
 		err = wsServer.Connect(w, r, requesterID, chatID)
 		if err != nil {
-			statusCode, resp := apperror.MapError(err, log)
+			statusCode, resp := errs.MapError(err, log)
 			WriteJSON(w, statusCode, resp, log)
 			return
 		}

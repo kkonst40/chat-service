@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 )
 
@@ -34,7 +34,7 @@ func (c *SSOClient) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.
 	})
 
 	if err != nil {
-		return nil, &apperror.ExternalServiceError{
+		return nil, &errs.ExternalServiceError{
 			Msg: fmt.Sprintf("sso service call failed: %v", err.Error()),
 		}
 	}

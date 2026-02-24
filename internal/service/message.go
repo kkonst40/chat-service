@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -40,10 +40,10 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	log.Debug("messageService.GetChatMessages", "chatID", chatID)
 
 	if !s.chatService.DoesChatExist(ctx, chatID) {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 	if !s.userService.isUserInChat(ctx, chatID, requesterID) {
-		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
+		return nil, &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
 	messages, err := s.messageRepository.GetChatMessages(ctx, chatID, from, count)
@@ -60,7 +60,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, msgID, userID, chatI
 	log.Debug("messageService.CreateMessage", "chatID", chatID)
 
 	if !s.chatService.DoesChatExist(ctx, chatID) {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
 	}
 
 	message := &model.Message{
@@ -89,7 +89,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 	}
 
 	if message.UserID != requesterID {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not the owner of the message (%v)", requesterID, msgID)}
+		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not the owner of the message (%v)", requesterID, msgID)}
 	}
 
 	newMessage := &model.Message{
@@ -138,7 +138,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[sender.Role]) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err = s.messageRepository.DeleteMessage(ctx, msgID)

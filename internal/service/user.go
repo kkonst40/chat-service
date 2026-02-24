@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
@@ -37,7 +37,7 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	log.Debug("userService.GetChatUsers", "chatID", chatID)
 
 	if !s.isUserInChat(ctx, chatID, requesterID) {
-		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
+		return nil, &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
 	user, err := s.userRepository.GetChatUsers(ctx, chatID)
@@ -54,7 +54,7 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userID
 	log.Debug("userService.AddChatUsers", "chatID", chatID)
 
 	if !s.isUserInChat(ctx, chatID, requesterID) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
+		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
 	}
 
 	existingUserIDs, err := s.existMany(ctx, userIDs)
@@ -96,7 +96,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err = s.userRepository.DeleteChatUser(ctx, chatID, userID)
@@ -122,7 +122,7 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
 	}
 
 	err = s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)

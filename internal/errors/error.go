@@ -1,10 +1,21 @@
-package apperror
+package errors
 
 import (
 	"context"
 	"errors"
 	"log/slog"
 	"net/http"
+)
+
+var (
+	ErrInternal        = errors.New("internal error")
+	ErrNotFound        = errors.New("resource not found")
+	ErrInvalidRequest  = errors.New("invalid request")
+	ErrForbidden       = errors.New("access forbidden")
+	ErrUnauthorized    = errors.New("unauthorized")
+	ErrDatabase        = errors.New("DB error")
+	ErrChatConnection  = errors.New("chat connection error")
+	ErrExternalService = errors.New("external service error")
 )
 
 // should be renamed
@@ -149,6 +160,59 @@ func MapError(err error, log *slog.Logger) (int, ErrResp) {
 		statusCode = http.StatusInternalServerError
 		msg = "Internal server error"
 	}
+
+	return statusCode, ErrResp{msg}
+}
+
+func MapError_(err error, log *slog.Logger) (int, ErrResp) {
+	if err == nil {
+		return 0, ErrResp{}
+	}
+
+	var (
+		statusCode int
+		msg        string
+	)
+
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		statusCode = http.StatusGatewayTimeout
+		msg = "The request took too long to process"
+
+	case errors.Is(err, ErrInternal):
+		statusCode = http.StatusInternalServerError
+		msg = "Internal server error"
+
+	case errors.Is(err, ErrNotFound):
+		statusCode = http.StatusNotFound
+		msg = ErrNotFound.Error()
+
+	case errors.Is(err, ErrInvalidRequest):
+		statusCode = http.StatusBadRequest
+		msg = ErrInvalidRequest.Error()
+
+	case errors.Is(err, ErrForbidden):
+		statusCode = http.StatusForbidden
+		msg = "Access denied"
+
+	case errors.Is(err, ErrUnauthorized):
+		statusCode = http.StatusUnauthorized
+		msg = "User unauthorized"
+
+	case errors.Is(err, ErrDatabase):
+		statusCode = http.StatusInternalServerError
+		msg = "Internal server error"
+
+	case errors.Is(err, ErrChatConnection):
+		statusCode = http.StatusForbidden
+		msg = "Chat connection error"
+
+	default:
+		statusCode = http.StatusInternalServerError
+		msg = "Internal server error"
+	}
+
+	log.Error(err.Error())
 
 	return statusCode, ErrResp{msg}
 }

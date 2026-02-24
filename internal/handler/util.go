@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 )
 
 func WriteJSON(w http.ResponseWriter, statusCode int, body any, log *slog.Logger) {
@@ -24,7 +24,7 @@ func WriteString(w http.ResponseWriter, statusCode int, err string, log *slog.Lo
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	body := apperror.ErrResp{Message: err}
+	body := errs.ErrResp{Message: err}
 	if err := json.NewEncoder(w).Encode(body); err != nil {
 		log.Error("JSON encoding error")
 	}
