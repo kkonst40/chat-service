@@ -9,11 +9,11 @@ import (
 type ContextKey string
 
 const (
-	CtxKey ContextKey = "logger"
+	LoggerCtxKey ContextKey = "logger"
 )
 
 func FromContext(ctx context.Context) *slog.Logger {
-	if logger, ok := ctx.Value(CtxKey).(*slog.Logger); ok {
+	if logger, ok := ctx.Value(LoggerCtxKey).(*slog.Logger); ok {
 		return logger
 	}
 	return slog.Default()

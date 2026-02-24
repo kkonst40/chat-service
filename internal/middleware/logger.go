@@ -3,28 +3,27 @@ package middleware
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/logger"
 )
 
-func Logger() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func Logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID, _ := uuid.NewV7()
 		log := slog.With("requestID", requestID.String())
 
 		log.Info("Request started",
-			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
+			"method", r.Method,
+			"path", r.URL.Path,
 		)
 
-		ctx := context.WithValue(c.Request.Context(), logger.CtxKey, log)
+		ctx := context.WithValue(r.Context(), logger.LoggerCtxKey, log)
 
-		c.Request = c.Request.WithContext(ctx)
 		start := time.Now()
-		c.Next()
+		next.ServeHTTP(w, r.WithContext(ctx))
 		log.Info("Request handling time", "time", time.Since(start))
-	}
+	})
 }

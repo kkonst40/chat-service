@@ -1,9 +1,9 @@
 package app
 
 import (
+	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/middleware"
@@ -16,42 +16,50 @@ func NewRouter(
 	messageHandler *handler.MessageHandler,
 	wsServer *ws.Server,
 	cfg *config.Config,
-) *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
+) http.Handler {
+	httpRouter := http.NewServeMux()
 
-	router := gin.New()
-	router.Use(gin.Recovery())
-	router.Use(middleware.Logger())
-	router.Use(middleware.Error())
+	httpRouter.HandleFunc("GET /chats", chatHandler.GetChats)
+	httpRouter.HandleFunc("POST /chats", chatHandler.CreateChat)
+	httpRouter.HandleFunc("GET /chats/{chatId}", chatHandler.GetChat)
+	httpRouter.HandleFunc("PUT /chats/{chatId}", chatHandler.UpdateChatName)
+	httpRouter.HandleFunc("DELETE /chats/{chatId}", chatHandler.DeleteChat)
+
+	httpRouter.HandleFunc("GET /chatusers/{chatId}", userHandler.GetChatUsers)
+	httpRouter.HandleFunc("POST /chatusers/{chatId}", userHandler.AddChatUsers)
+	httpRouter.HandleFunc("PUT /chatusers/{chatId}/{userId}", userHandler.UpdateChatUserRole)
+	httpRouter.HandleFunc("DELETE /chatusers/{chatId}/{userId}", userHandler.DeleteChatUser)
+
+	httpRouter.HandleFunc("GET /chatmessages/{chatId}", messageHandler.GetChatMessages)
 
 	// for test
-	router.GET("/chatlist", func(c *gin.Context) {
-		c.File("static/chatlist.html")
+	httpRouter.HandleFunc("GET /chatlist", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/chatlist.html")
 	})
-	router.GET("/chatroom", func(c *gin.Context) {
-		c.File("static/chatroom.html")
+	httpRouter.HandleFunc("GET /chatroom", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/chatroom.html")
 	})
+	//
 
-	router.GET("/connect/:chatId", middleware.Auth(cfg), chatHandler.ConnectToChat(wsServer))
+	wsRouter := http.NewServeMux()
+	wsRouter.HandleFunc("GET /connect/{chatId}", chatHandler.ConnectToChat(wsServer))
 
-	http := router.Group("/")
-	http.Use(middleware.CtxTimeout(3 * time.Second))
-	{
-		http.Use(middleware.Auth(cfg))
+	httpStack := middleware.CreateStack(
+		middleware.Recovery,
+		middleware.Logger,
+		middleware.Timeout(3*time.Second),
+		middleware.Auth(cfg),
+	)
 
-		http.GET("/chats", chatHandler.GetChats())
-		http.POST("/chats", chatHandler.CreateChat())
-		http.GET("/chats/:chatId", chatHandler.GetChat())
-		http.PUT("/chats/:chatId", chatHandler.UpdateChatName())
-		http.DELETE("/chats/:chatId", chatHandler.DeleteChat())
+	wsStack := middleware.CreateStack(
+		middleware.Recovery,
+		middleware.Logger,
+		middleware.Auth(cfg),
+	)
 
-		http.GET("/chatusers/:chatId", userHandler.GetChatUsers())
-		http.POST("/chatusers/:chatId", userHandler.AddChatUsers())
-		http.PUT("/chatusers/:chatId/:userId", userHandler.UpdateChatUserRole())
-		http.DELETE("/chatusers/:chatId/:userId", userHandler.DeleteChatUser())
+	mainRouter := http.NewServeMux()
+	mainRouter.Handle("/", httpStack(httpRouter))
+	mainRouter.Handle("/", wsStack(wsRouter))
 
-		http.GET("/chatmessages/:chatId", messageHandler.GetChatMessages())
-	}
-
-	return router
+	return mainRouter
 }

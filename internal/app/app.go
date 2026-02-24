@@ -65,8 +65,9 @@ func New(cfg *config.Config) (*App, error) {
 
 	slog.Info("Services are initialized")
 
-	userHandler := handler.NewUserHandler(userService)
-	chatHandler := handler.NewChatHandler(chatService)
+	validator := handler.NewValidator()
+	userHandler := handler.NewUserHandler(userService, validator)
+	chatHandler := handler.NewChatHandler(chatService, validator)
 	messageHandler := handler.NewMessageHandler(messageService)
 
 	slog.Info("Handlers are initialized")
