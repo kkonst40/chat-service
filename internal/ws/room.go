@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -76,26 +77,17 @@ func (r *room) run(chatID uuid.UUID) {
 func (r *room) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, error) {
 	switch event.Type {
 	case ActionCreate:
-		msgID, err := uuid.NewV7()
+		msg, err := r.messageService.CreateMessage(
+			r.ctx,
+			event.UserID,
+			chatID,
+			event.Text,
+		)
+
 		if err != nil {
-			return roomEvent{}, fmt.Errorf("generating msg id error")
+			return roomEvent{}, err
 		}
-
-		event.MsgID = msgID
-
-		go func() {
-			_, err = r.messageService.CreateMessage(
-				r.ctx,
-				event.MsgID,
-				event.UserID,
-				chatID,
-				event.Text,
-			)
-
-			if err != nil {
-				slog.Error("Saving message error", "messageID", event.MsgID)
-			}
-		}()
+		event.MsgID = msg.ID
 
 	case ActionUpdate:
 		err := r.messageService.UpdateMessage(
@@ -119,8 +111,9 @@ func (r *room) handleEvent(event roomEvent, chatID uuid.UUID) (roomEvent, error)
 		if err != nil {
 			return roomEvent{}, err
 		}
+
 	default:
-		return roomEvent{}, fmt.Errorf("Unknown action type")
+		return roomEvent{}, fmt.Errorf("%w: %v", errs.ErrInvalidAction, event.Type)
 	}
 
 	return event, nil
