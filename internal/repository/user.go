@@ -13,5 +13,5 @@ type UserRepository interface {
 	AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error
 	DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error
 	UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role) error
-	IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error)
+	UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error)
 }
