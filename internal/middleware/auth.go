@@ -2,12 +2,14 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/config"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/logger"
 )
@@ -28,7 +30,7 @@ func Auth(cfg *config.Config) Middleware {
 			token, err := r.Cookie(cfg.JWT.CookieName)
 			if err != nil {
 				log.Error("Token not found", "error", err.Error())
-				handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
+				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
 				return
 			}
 
@@ -37,7 +39,7 @@ func Auth(cfg *config.Config) Middleware {
 			claims, err := validateToken(token.Value, cfg)
 			if err != nil {
 				log.Error("Token validation error", "error", err.Error())
-				handler.WriteString(w, http.StatusUnauthorized, "Invalid token", log)
+				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
 				return
 			}
 
