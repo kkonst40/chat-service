@@ -18,6 +18,8 @@ var (
 	ErrDatabase        = errors.New("DB error")
 	ErrChatConnection  = errors.New("chat connection error")
 	ErrExternalService = errors.New("external service error")
+
+	ErrInvalidAction = errors.New("unknown action")
 )
 
 // should be renamed
