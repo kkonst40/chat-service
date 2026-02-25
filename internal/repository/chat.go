@@ -13,5 +13,5 @@ type ChatRepository interface {
 	CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error
 	UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error
 	DeleteChat(ctx context.Context, chatID uuid.UUID) error
-	DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error)
+	ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error)
 }

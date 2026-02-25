@@ -2,10 +2,9 @@ package memory
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
@@ -26,7 +25,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 
 	chat, ok := r.db.chats[chatID]
 	if !ok {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+		return nil, errs.ErrChatNotFound
 	}
 
 	return chat, nil
@@ -51,7 +50,7 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chat.ID]; ok {
-		return &apperror.DBError{Msg: "collision error while creating chat"}
+		return errs.ErrDatabase
 	}
 	r.db.chats[chat.ID] = chat
 
@@ -63,7 +62,7 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chatID]; !ok {
-		return &apperror.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+		return errs.ErrChatNotFound
 	}
 	r.db.chats[chatID].Name = name
 
@@ -79,7 +78,7 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 	return nil
 }
 
-func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
+func (r *ChatRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 

@@ -2,10 +2,9 @@ package memory
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
@@ -32,7 +31,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, user
 	key := key{UserID: userID, ChatID: chatID}
 	user, ok := r.db.users[key]
 	if !ok {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return nil, errs.ErrUserNotFound
 	}
 
 	return user, nil
@@ -89,13 +88,13 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	if _, ok := r.db.users[key]; ok {
 		r.db.users[key].Role = newRole
 	} else {
-		return &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return errs.ErrUserNotFound
 	}
 
 	return nil
 }
 
-func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
+func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 

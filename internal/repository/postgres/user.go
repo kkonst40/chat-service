@@ -3,11 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	"github.com/jackc/pgx/v5/pgconn"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -41,10 +43,10 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return nil, errs.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return &user, nil
@@ -62,7 +64,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -74,14 +76,14 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 			&user.ChatID,
 			&user.Role,
 		); err != nil {
-			return nil, &apperror.DBError{Msg: err.Error()}
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
 
 		users = append(users, user)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return users, nil
@@ -109,8 +111,17 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 		args = append(args, userID, chatID, model.Common)
 	}
 
+	queryBuilder.WriteString(" ON CONFLICT (id, chat_id) DO NOTHING")
+
 	if _, err := r.db.ExecContext(ctx, queryBuilder.String(), args...); err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23503" && pgErr.ConstraintName == "fk_users_chat" {
+				return errs.ErrChatNotFound
+			}
+		}
+
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -126,7 +137,7 @@ func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, u
 	log.Debug("deleting chat user in DB", "chatID", chatID, "userID", userID)
 
 	if _, err := r.db.ExecContext(ctx, query, userID, chatID); err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -144,22 +155,22 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 
 	res, err := r.db.ExecContext(ctx, query, newRole, userID, chatID)
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return &apperror.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return errs.ErrUserNotFound
 	}
 
 	return nil
 }
 
-func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
+func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
 	log := logger.FromContext(ctx)
 	const query = `
 		SELECT EXISTS(
@@ -178,7 +189,7 @@ func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.U
 	)
 
 	if err != nil {
-		return false, &apperror.DBError{Msg: err.Error()}
+		return false, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return exists, nil

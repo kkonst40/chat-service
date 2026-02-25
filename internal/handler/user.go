@@ -1,12 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/dto"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/service"
@@ -14,153 +15,137 @@ import (
 
 type UserHandler struct {
 	userService *service.UserService
+	validate    *validator.Validate
 }
 
-func NewUserHandler(newUserService *service.UserService) *UserHandler {
+func NewUserHandler(newUserService *service.UserService, validate *validator.Validate) *UserHandler {
 	return &UserHandler{
 		userService: newUserService,
+		validate:    validate,
 	}
 }
 
-func (h *UserHandler) GetChatUsers() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		requesterID := uuid.MustParse(c.GetString("requesterID"))
-		ctx := c.Request.Context()
+func (h *UserHandler) GetChatUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requesterID := getUserID(ctx)
+	log := logger.FromContext(ctx)
 
-		chatID, err := uuid.Parse(c.Param("chatId"))
-		if err != nil {
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid chat ID format",
-			})
-			return
-		}
-
-		users, err := h.userService.GetChatUsers(ctx, chatID, requesterID)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
-		logger.FromContext(ctx).Info("chat users retrieved", "chatID", chatID)
-
-		resp := dto.GetChatUsersResponse{
-			Users: make([]dto.GetUserResponse, 0, len(users)),
-		}
-
-		for _, user := range users {
-			resp.Users = append(resp.Users, dto.GetUserResponse{
-				ID:     user.ID,
-				ChatID: user.ChatID,
-				Role:   string(user.Role),
-			})
-		}
-
-		c.JSON(http.StatusOK, resp)
+	chatID, err := uuid.Parse(r.PathValue("chatId"))
+	if err != nil {
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		return
 	}
+
+	users, err := h.userService.GetChatUsers(ctx, chatID, requesterID)
+	if err != nil {
+		WriteError(w, err, log)
+		return
+	}
+
+	log.Info("chat users retrieved", "chatID", chatID)
+
+	resp := dto.GetChatUsersResponse{
+		Users: make([]dto.GetUserResponse, 0, len(users)),
+	}
+
+	for _, user := range users {
+		resp.Users = append(resp.Users, dto.GetUserResponse{
+			ID:     user.ID,
+			ChatID: user.ChatID,
+			Role:   string(user.Role),
+		})
+	}
+
+	WriteJSON(w, http.StatusOK, resp, log)
 }
 
-func (h *UserHandler) AddChatUsers() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req dto.AddChatUsersRequest
-		requesterID := uuid.MustParse(c.GetString("requesterID"))
-		ctx := c.Request.Context()
+func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requesterID := getUserID(ctx)
+	log := logger.FromContext(ctx)
 
-		chatID, err := uuid.Parse(c.Param("chatId"))
-		if err != nil {
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid chat ID format",
-			})
-			return
-		}
-
-		if err = c.ShouldBindJSON(&req); err != nil {
-			c.Error(handleValidationErr(err))
-			return
-		}
-
-		err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
-		logger.FromContext(ctx).Info("chat users added", "chatID", chatID)
+	chatID, err := uuid.Parse(r.PathValue("chatId"))
+	if err != nil {
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		return
 	}
+
+	var req dto.AddChatUsersRequest
+	if err := bindJSON(r, &req, h.validate); err != nil {
+		WriteError(w, err, log)
+		return
+	}
+
+	err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
+	if err != nil {
+		WriteError(w, err, log)
+		return
+	}
+
+	log.Info("chat users added", "chatID", chatID)
 }
 
-func (h *UserHandler) UpdateChatUserRole() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req dto.UpdateChatUserRoleRequest
-		requesterID := uuid.MustParse(c.GetString("requesterID"))
-		ctx := c.Request.Context()
+func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requesterID := getUserID(ctx)
+	log := logger.FromContext(ctx)
 
-		chatID, err := uuid.Parse(c.Param("chatId"))
-		if err != nil {
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid chat ID format",
-			})
-			return
-		}
-
-		userID, err := uuid.Parse(c.Param("userId"))
-		if err != nil {
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid user ID format",
-			})
-			return
-		}
-
-		if err = c.ShouldBindJSON(&req); err != nil {
-			c.Error(handleValidationErr(err))
-			return
-		}
-
-		switch req.Role {
-		case model.Common, model.Admin, model.Owner:
-		default:
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid user role name",
-			})
-			return
-		}
-
-		err = h.userService.UpdateUserRole(ctx, chatID, userID, req.Role, requesterID)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
-		logger.FromContext(ctx).Info("chat user role updated", "chatID", chatID, "userID", userID)
+	chatID, err := uuid.Parse(r.PathValue("chatId"))
+	if err != nil {
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		return
 	}
+
+	userID, err := uuid.Parse(r.PathValue("userId"))
+	if err != nil {
+		WriteError(w, fmt.Errorf("%w: user ID format", errs.ErrInvalidRequest), log)
+		return
+	}
+
+	var req dto.UpdateChatUserRoleRequest
+	if err := bindJSON(r, &req, h.validate); err != nil {
+		WriteError(w, err, log)
+		return
+	}
+
+	switch req.Role {
+	case model.Common, model.Admin, model.Owner:
+	default:
+		WriteError(w, fmt.Errorf("%w: role name", errs.ErrInvalidRequest), log)
+		return
+	}
+
+	err = h.userService.UpdateUserRole(ctx, chatID, userID, req.Role, requesterID)
+	if err != nil {
+		WriteError(w, err, log)
+		return
+	}
+
+	log.Info("chat user role updated", "chatID", chatID, "userID", userID)
 }
 
-func (h *UserHandler) DeleteChatUser() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		requesterID := uuid.MustParse(c.GetString("requesterID"))
-		ctx := c.Request.Context()
+func (h *UserHandler) DeleteChatUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requesterID := getUserID(ctx)
+	log := logger.FromContext(ctx)
 
-		chatID, err := uuid.Parse(c.Param("chatId"))
-		if err != nil {
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid chat ID format",
-			})
-			return
-		}
-
-		userID, err := uuid.Parse(c.Param("userId"))
-		if err != nil {
-			c.Error(&apperror.InvalidRequestError{
-				Msg: "Invalid user ID format",
-			})
-			return
-		}
-
-		err = h.userService.DeleteChatUser(ctx, chatID, userID, requesterID)
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
-		logger.FromContext(ctx).Info("chat user deleted", "chatID", chatID, "userID", userID)
+	chatID, err := uuid.Parse(r.PathValue("chatId"))
+	if err != nil {
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		return
 	}
+
+	userID, err := uuid.Parse(r.PathValue("userId"))
+	if err != nil {
+		WriteError(w, fmt.Errorf("%w: user ID format", errs.ErrInvalidRequest), log)
+		return
+	}
+
+	err = h.userService.DeleteChatUser(ctx, chatID, userID, requesterID)
+	if err != nil {
+		WriteError(w, err, log)
+		return
+	}
+
+	log.Info("chat user deleted", "chatID", chatID, "userID", userID)
 }

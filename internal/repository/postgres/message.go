@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	"github.com/jackc/pgx/v5/pgconn"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -43,10 +45,10 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, &apperror.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msgID)}
+		return nil, errs.ErrMsgNotFound
 	}
 	if err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return &msg, nil
@@ -67,7 +69,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 
 	rows, err := r.db.QueryContext(ctx, query, chatID, count, from)
 	if err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -82,14 +84,14 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			&msg.Text,
 			&msg.CreatedAt,
 		); err != nil {
-			return nil, &apperror.DBError{Msg: err.Error()}
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
 
 		messages = append(messages, msg)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, &apperror.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return messages, nil
@@ -115,7 +117,19 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 	)
 
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23503" {
+				switch pgErr.ConstraintName {
+				case "fk_messages_chat":
+					return errs.ErrChatNotFound
+				case "fk_messages_user":
+					return errs.ErrUserNotFound
+				}
+			}
+		}
+
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -133,16 +147,16 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 
 	res, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return &apperror.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msg.ID)}
+		return errs.ErrMsgNotFound
 	}
 
 	return nil
@@ -158,7 +172,7 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 	log.Debug("deleting message in DB", "msgID", msgID)
 
 	if _, err := r.db.ExecContext(ctx, query, msgID); err != nil {
-		return &apperror.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil

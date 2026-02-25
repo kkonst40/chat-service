@@ -1,27 +1,12 @@
 package middleware
 
 import (
-	"context"
+	"net/http"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
-func CtxTimeout(d time.Duration) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if d <= 0 {
-			c.Next()
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(c.Request.Context(), d)
-		defer cancel()
-
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
-
-		if ctx.Err() == context.DeadlineExceeded {
-			c.Error(ctx.Err())
-		}
+func Timeout(d time.Duration) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.TimeoutHandler(next, d, "Timed out")
 	}
 }

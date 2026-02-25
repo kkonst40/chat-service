@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
@@ -28,7 +28,7 @@ func NewUserService(
 }
 
 func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error) {
-	// ?
+	//??
 	return s.userRepository.GetChatUser(ctx, chatID, userID)
 }
 
@@ -36,13 +36,18 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	log := logger.FromContext(ctx)
 	log.Debug("userService.GetChatUsers", "chatID", chatID)
 
-	if !s.isUserInChat(ctx, chatID, requesterID) {
-		return nil, &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
+	if !s.userInChat(ctx, chatID, requesterID) {
+		return nil, fmt.Errorf(
+			"%w: user %v is not in chat %v",
+			errs.ErrForbidden,
+			requesterID,
+			chatID,
+		)
 	}
 
 	user, err := s.userRepository.GetChatUsers(ctx, chatID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get chat %v users: %w", chatID, err)
 	}
 	log.Debug("chat users retrieved")
 
@@ -53,18 +58,23 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userID
 	log := logger.FromContext(ctx)
 	log.Debug("userService.AddChatUsers", "chatID", chatID)
 
-	if !s.isUserInChat(ctx, chatID, requesterID) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) is not in the chat (%v)", requesterID, chatID)}
+	if !s.userInChat(ctx, chatID, requesterID) {
+		return fmt.Errorf(
+			"%w: user %v is not in chat %v",
+			errs.ErrForbidden,
+			requesterID,
+			chatID,
+		)
 	}
 
 	existingUserIDs, err := s.existMany(ctx, userIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("check users existence before add to chat %v: %w", chatID, err)
 	}
 
 	err = s.userRepository.AddChatUsers(ctx, chatID, existingUserIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("add chat %v users: %w", chatID, err)
 	}
 	log.Debug("chat users added")
 
@@ -78,7 +88,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 	if userID == requesterID {
 		err := s.userRepository.DeleteChatUser(ctx, chatID, userID)
 		if err != nil {
-			return err
+			return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 		}
 		log.Debug("user deleted")
 
@@ -87,21 +97,27 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 
 	requester, err := s.userRepository.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get requester %v to perform delete: %w", requesterID, err)
 	}
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get user %v to delete: %w", userID, err)
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return fmt.Errorf(
+			"%w: user %v has no permission to delete user %v from chat %v",
+			errs.ErrForbidden,
+			requesterID,
+			userID,
+			chatID,
+		)
 	}
 
 	err = s.userRepository.DeleteChatUser(ctx, chatID, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 	}
 	log.Debug("user deleted")
 
@@ -114,20 +130,25 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get requester %v to perform role update: %w", requesterID, err)
 	}
 	requester, err := s.userRepository.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get user %v to update:%w", userID, err)
 	}
 
 	if !(model.UserPriority[requester.Role] > model.UserPriority[user.Role]) {
-		return &apperror.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return fmt.Errorf(
+			"%w: user %v has no permission to update user %v role",
+			errs.ErrForbidden,
+			requesterID,
+			userID,
+		)
 	}
 
 	err = s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
 	if err != nil {
-		return err
+		return fmt.Errorf("update user %v role (to %v) in chat %v: %w", userID, newRole, chatID, err)
 	}
 	log.Debug("user role updated")
 
@@ -147,8 +168,8 @@ func (s *UserService) hasPermission(ctx context.Context, chatID, requesterID uui
 	return true
 }
 
-func (s *UserService) isUserInChat(ctx context.Context, chatID, userID uuid.UUID) bool {
-	result, err := s.userRepository.IsUserInChat(ctx, chatID, userID)
+func (s *UserService) userInChat(ctx context.Context, chatID, userID uuid.UUID) bool {
+	result, err := s.userRepository.UserInChat(ctx, chatID, userID)
 	if err != nil {
 		return false
 	}

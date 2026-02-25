@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/kkonst40/ichat/internal/config"
@@ -31,7 +28,7 @@ type App struct {
 }
 
 func New(cfg *config.Config) (*App, error) {
-	db, err := NewDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.DBName)
+	db, err := SetupDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.DBName)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +62,9 @@ func New(cfg *config.Config) (*App, error) {
 
 	slog.Info("Services are initialized")
 
-	userHandler := handler.NewUserHandler(userService)
-	chatHandler := handler.NewChatHandler(chatService)
+	validator := handler.NewValidator()
+	userHandler := handler.NewUserHandler(userService, validator)
+	chatHandler := handler.NewChatHandler(chatService, validator)
 	messageHandler := handler.NewMessageHandler(messageService)
 
 	slog.Info("Handlers are initialized")
@@ -96,36 +94,25 @@ func New(cfg *config.Config) (*App, error) {
 }
 
 func (a *App) Run() error {
-	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
-
-	go func() {
-		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error(err.Error())
-			os.Exit(1)
-		}
-	}()
-	slog.Info("Server started", "address", a.httpServer.Addr)
-
-	<-appCtx.Done()
-	slog.Warn("Shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	a.wsServer.Shutdown()
-	if err := a.httpServer.Shutdown(ctx); err != nil {
-		slog.Warn("Server forced to shutdown", "error", err.Error())
+	if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("HTTP serve error: %w", err)
 	}
-	if err := a.db.Close(); err != nil {
-		slog.Warn("DB close error", "error", err.Error())
-	}
-
-	slog.Warn("Server exiting")
 	return nil
 }
 
-func NewDB(user, pwd, host, dbName string) (*sql.DB, error) {
+func (a *App) Shutdown(ctx context.Context) {
+	a.wsServer.Shutdown()
+
+	if err := a.httpServer.Shutdown(ctx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err.Error())
+	}
+
+	if err := a.db.Close(); err != nil {
+		slog.Error("DB close error", "error", err.Error())
+	}
+}
+
+func SetupDB(user, pwd, host, dbName string) (*sql.DB, error) {
 	dbUrl := fmt.Sprintf("postgres://%v:%v@%v/%v",
 		user, pwd, host, dbName)
 

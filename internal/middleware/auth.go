@@ -1,12 +1,16 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
+	"context"
+	"fmt"
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/apperror"
 	"github.com/kkonst40/ichat/internal/config"
+	errs "github.com/kkonst40/ichat/internal/errors"
+	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/logger"
 )
 
@@ -17,33 +21,53 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func Auth(cfg *config.Config) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
-		log := logger.FromContext(ctx)
+func Auth(cfg *config.Config) Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			log := logger.FromContext(ctx)
 
-		tokenString, err := c.Cookie(cfg.JWT.CookieName)
-		if err != nil {
-			c.Error(&apperror.UnauthorizedError{Msg: "Token not found"})
-			c.Abort()
-			return
-		}
+			token, err := r.Cookie(cfg.JWT.CookieName)
+			if err != nil {
+				log.Error("Token not found", "error", err.Error())
+				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
+				return
+			}
 
-		log.Info("", "token", tokenString)
+			log.Info("", "token", token.Value)
 
-		claims, err := validateToken(tokenString, cfg)
-		if err != nil {
-			log.Error("Token validation error", "error", err.Error())
-			c.Error(&apperror.UnauthorizedError{Msg: "Invalid token"})
-			c.Abort()
-			return
-		}
-		c.Set("requesterID", claims.ID.String())
+			claims, err := validateToken(token.Value, cfg)
+			if err != nil {
+				log.Error("Token validation error", "error", err.Error())
+				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
+				return
+			}
 
-		log.Info("", "userID", claims.ID)
+			log.Info("", "userID", claims.ID)
 
-		c.Next()
+			ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
+}
+
+func DummyAuthQ(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := r.URL.Query().Get("userId")
+		ctx := context.WithValue(r.Context(), "requesterID", userID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func DummyAuthH(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID := r.Header.Get("UserID")
+		ctx := context.WithValue(r.Context(), "requesterID", userID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func validateToken(tokenString string, cfg *config.Config) (*UserClaims, error) {

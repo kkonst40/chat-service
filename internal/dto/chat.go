@@ -12,10 +12,10 @@ type GetChatsResponse struct {
 }
 
 type CreateChatRequest struct {
-	Name    string      `json:"name" binding:"required"`
-	UserIDs []uuid.UUID `json:"userIds" binding:"required"`
+	Name    string      `json:"name" validate:"required"`
+	UserIDs []uuid.UUID `json:"userIds" validate:"required"`
 }
 
 type UpdateChatNameRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" validate:"required"`
 }
