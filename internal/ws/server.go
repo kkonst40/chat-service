@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -10,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -57,9 +58,7 @@ func NewServer(chatService *service.ChatService, messageService *service.Message
 func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userID uuid.UUID, chatID uuid.UUID) error {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		return &errors.ChatConnectionError{
-			Msg: err.Error(),
-		}
+		return fmt.Errorf("%w: %w", errs.ErrChatConnection, err)
 	}
 
 	user := &user{
@@ -83,10 +82,10 @@ func (s *Server) Connect(w http.ResponseWriter, r *http.Request, userID uuid.UUI
 				close(u.send)
 			}
 			room.cancel()
-			slog.Info("Room stopped", "roomID", chatID)
+			slog.Debug("Room stopped", "roomID", chatID)
 		}()
 
-		slog.Info("Room created", "roomID", chatID)
+		slog.Debug("Room created", "roomID", chatID)
 	}
 	s.mu.Unlock()
 
