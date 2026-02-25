@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/kkonst40/ichat/internal/app"
 	"github.com/kkonst40/ichat/internal/config"
@@ -29,10 +33,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = application.Run()
-	if err != nil {
-		slog.Error("Application running", "error", err.Error())
-		slog.Info("Server exiting")
-		os.Exit(1)
-	}
+	appCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+
+	go func() {
+		err = application.Run()
+		if err != nil {
+			slog.Error("Application running", "error", err.Error())
+			slog.Info("Server exiting")
+			os.Exit(1)
+		}
+	}()
+
+	<-appCtx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	application.Shutdown(shutdownCtx)
 }
