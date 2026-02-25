@@ -31,7 +31,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, user
 	key := key{UserID: userID, ChatID: chatID}
 	user, ok := r.db.users[key]
 	if !ok {
-		return nil, errs.ErrNotFound
+		return nil, errs.ErrUserNotFound
 	}
 
 	return user, nil
@@ -88,13 +88,13 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	if _, ok := r.db.users[key]; ok {
 		r.db.users[key].Role = newRole
 	} else {
-		return errs.ErrNotFound
+		return errs.ErrUserNotFound
 	}
 
 	return nil
 }
 
-func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
+func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 

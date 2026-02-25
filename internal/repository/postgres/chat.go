@@ -39,7 +39,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrNotFound
+		return nil, errs.ErrChatNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
@@ -91,12 +91,12 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
 	log := logger.FromContext(ctx)
 	const chatQuery = `
-	INSERT INTO chats (id, name)
-	VALUES ($1, $2)
+		INSERT INTO chats (id, name)
+		VALUES ($1, $2)
 	`
 	const userQuery = `
-	INSERT INTO users (id, chat_id, role)
-	VALUES ($1, $2, $3)
+		INSERT INTO users (id, chat_id, role)
+		VALUES ($1, $2, $3)
 	`
 
 	log.Debug("creating new chat with creator user in DB", "chatID", chat.ID, "userID", creatorID)
@@ -143,7 +143,7 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 	}
 
 	if rowsAffected == 0 {
-		return errs.ErrNotFound
+		return errs.ErrChatNotFound
 	}
 
 	return nil
@@ -165,7 +165,7 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 	return nil
 }
 
-func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
+func (r *ChatRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
 	log := logger.FromContext(ctx)
 	const query = `
 		SELECT EXISTS(

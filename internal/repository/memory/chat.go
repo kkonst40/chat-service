@@ -25,7 +25,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 
 	chat, ok := r.db.chats[chatID]
 	if !ok {
-		return nil, errs.ErrNotFound
+		return nil, errs.ErrChatNotFound
 	}
 
 	return chat, nil
@@ -62,7 +62,7 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chatID]; !ok {
-		return errs.ErrNotFound
+		return errs.ErrChatNotFound
 	}
 	r.db.chats[chatID].Name = name
 
@@ -78,7 +78,7 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 	return nil
 }
 
-func (r *ChatRepository) DoesChatExist(ctx context.Context, chatID uuid.UUID) (bool, error) {
+func (r *ChatRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 

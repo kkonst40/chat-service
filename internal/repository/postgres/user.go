@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
@@ -41,7 +43,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrNotFound
+		return nil, errs.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
@@ -109,7 +111,16 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 		args = append(args, userID, chatID, model.Common)
 	}
 
+	queryBuilder.WriteString(" ON CONFLICT (id, chat_id) DO NOTHING")
+
 	if _, err := r.db.ExecContext(ctx, queryBuilder.String(), args...); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23503" && pgErr.ConstraintName == "fk_users_chat" {
+				return errs.ErrChatNotFound
+			}
+		}
+
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
@@ -153,13 +164,13 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	}
 
 	if rowsAffected == 0 {
-		return errs.ErrNotFound
+		return errs.ErrUserNotFound
 	}
 
 	return nil
 }
 
-func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
+func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
 	log := logger.FromContext(ctx)
 	const query = `
 		SELECT EXISTS(

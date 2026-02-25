@@ -3,9 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/model"
@@ -43,7 +45,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrNotFound
+		return nil, errs.ErrMsgNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
@@ -115,6 +117,18 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 	)
 
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23503" {
+				switch pgErr.ConstraintName {
+				case "fk_messages_chat":
+					return errs.ErrChatNotFound
+				case "fk_messages_user":
+					return errs.ErrUserNotFound
+				}
+			}
+		}
+
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
@@ -142,7 +156,7 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 	}
 
 	if rowsAffected == 0 {
-		return errs.ErrNotFound
+		return errs.ErrMsgNotFound
 	}
 
 	return nil

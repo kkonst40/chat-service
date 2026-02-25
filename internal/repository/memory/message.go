@@ -26,7 +26,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 
 	message, ok := r.db.messages[msgID]
 	if !ok {
-		return nil, errs.ErrNotFound
+		return nil, errs.ErrMsgNotFound
 	}
 
 	return message, nil
@@ -67,7 +67,7 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; !ok {
-		return errs.ErrNotFound
+		return errs.ErrMsgNotFound
 	}
 	r.db.messages[msg.ID] = msg
 
