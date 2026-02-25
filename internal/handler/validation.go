@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -23,7 +24,7 @@ func NewValidator() *validator.Validate {
 	return v
 }
 
-func handleValidationErr(err error) *errs.InvalidRequestError {
+func handleValidationErr(err error) error {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		fields := make([]string, 0, len(ve))
@@ -31,12 +32,12 @@ func handleValidationErr(err error) *errs.InvalidRequestError {
 			fields = append(fields, fe.Field())
 		}
 
-		return &errs.InvalidRequestError{
-			Msg: "Invalid fields in request body: " + strings.Join(fields, ", "),
-		}
+		return fmt.Errorf(
+			"%w: fields: %s",
+			errs.ErrInvalidRequest,
+			strings.Join(fields, ", "),
+		)
 	}
 
-	return &errs.InvalidRequestError{
-		Msg: "Invalid request body",
-	}
+	return fmt.Errorf("%w: body", errs.ErrInvalidRequest)
 }
