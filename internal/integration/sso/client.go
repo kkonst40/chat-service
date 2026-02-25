@@ -34,9 +34,11 @@ func (c *SSOClient) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.
 	})
 
 	if err != nil {
-		return nil, &errs.ExternalServiceError{
-			Msg: fmt.Sprintf("sso service call failed: %v", err.Error()),
-		}
+		return nil, fmt.Errorf(
+			"%w: sso service: %w",
+			errs.ErrExternalService,
+			err,
+		)
 	}
 
 	existingIDs := make([]uuid.UUID, 0, len(resp.GetExistingIds()))

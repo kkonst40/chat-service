@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -31,7 +32,10 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Cha
 
 	chat, err := s.chatRepository.GetChat(ctx, chatID)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, errs.ErrChatNotFound) {
+			return nil, fmt.Errorf("%w: id %v", err, chatID)
+		}
+		return nil, fmt.Errorf("get chat %v: %w", chatID, err)
 	}
 	log.Debug("chat retrieved")
 
@@ -44,7 +48,7 @@ func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID) ([]mod
 
 	chats, err := s.chatRepository.GetUserChats(ctx, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
 	}
 	log.Debug("chats retrieved")
 
@@ -57,7 +61,7 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 
 	newID, err := uuid.NewV7()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: generating uuid: %w", errs.ErrInternal, err)
 	}
 
 	chat := &model.Chat{
@@ -67,13 +71,13 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 
 	err = s.chatRepository.CreateChat(ctx, chat, requesterID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create chat: %w", err)
 	}
 	log.Debug("chat created")
 
 	err = s.userService.AddChatUsers(ctx, chat.ID, userIDs, requesterID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("add users to new chat: %w", err)
 	}
 	log.Debug("chat users added")
 
@@ -85,12 +89,17 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 	log.Debug("chatService.UpdateChatName", "chatID", chatID)
 
 	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Admin) {
-		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return fmt.Errorf(
+			"%w: user %v has no permission to update chat %v name",
+			errs.ErrForbidden,
+			requesterID,
+			chatID,
+		)
 	}
 
 	err := s.chatRepository.UpdateChatName(ctx, chatID, name)
 	if err != nil {
-		return err
+		return fmt.Errorf("update chat %v name: %w", chatID, err)
 	}
 	log.Debug("chat name updated")
 
@@ -102,20 +111,25 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	log.Debug("chatService.DeleteChat", "chatID", chatID)
 
 	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Owner) {
-		return &errs.ForbiddenError{Msg: fmt.Sprintf("user (%v) has no permission", requesterID)}
+		return fmt.Errorf(
+			"%w: user %v has no permission to delete chat %v",
+			errs.ErrForbidden,
+			requesterID,
+			chatID,
+		)
 	}
 
 	err := s.chatRepository.DeleteChat(ctx, chatID)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete chat %v: %w", chatID, err)
 	}
 	log.Debug("chat deleted")
 
 	return nil
 }
 
-func (s *ChatService) DoesChatExist(ctx context.Context, chatID uuid.UUID) bool {
-	exists, err := s.chatRepository.DoesChatExist(ctx, chatID)
+func (s *ChatService) ChatExists(ctx context.Context, chatID uuid.UUID) bool {
+	exists, err := s.chatRepository.ChatExists(ctx, chatID)
 	if err != nil {
 		return false
 	}
@@ -124,5 +138,5 @@ func (s *ChatService) DoesChatExist(ctx context.Context, chatID uuid.UUID) bool 
 }
 
 func (s *ChatService) AllowedToConnect(ctx context.Context, chatID, userID uuid.UUID) bool {
-	return s.userService.isUserInChat(ctx, chatID, userID)
+	return s.userService.userInChat(ctx, chatID, userID)
 }
