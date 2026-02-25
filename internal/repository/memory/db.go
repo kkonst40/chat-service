@@ -21,8 +21,8 @@ func NewDB() *MemoryDB {
 		users:    make(map[key]*model.User),
 	}
 
-	userID1 := uuid.MustParse("019bad77-a48a-712b-af62-65e0cc331079") //qqq
-	userID2 := uuid.MustParse("019baab0-f622-76c6-9a56-d5782ef27693") //pavel
+	userID1 := uuid.MustParse("019bad77-a48a-712b-af62-65e0cc331079")
+	userID2 := uuid.MustParse("019baab0-f622-76c6-9a56-d5782ef27693")
 
 	chatID0 := uuid.MustParse("018f95a6-8d27-7e03-822c-6a81ce0d1f4b")
 	chatID1 := uuid.MustParse("018f95a6-8d28-7b41-8d9f-12e8b341a6c5")

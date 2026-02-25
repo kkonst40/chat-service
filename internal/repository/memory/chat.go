@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/errors"
@@ -26,7 +25,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 
 	chat, ok := r.db.chats[chatID]
 	if !ok {
-		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+		return nil, errs.ErrNotFound
 	}
 
 	return chat, nil
@@ -51,7 +50,7 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chat.ID]; ok {
-		return &errs.DBError{Msg: "collision error while creating chat"}
+		return errs.ErrDatabase
 	}
 	r.db.chats[chat.ID] = chat
 
@@ -63,7 +62,7 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chatID]; !ok {
-		return &errs.NotFoundError{Msg: fmt.Sprintf("chat (%v) not found", chatID)}
+		return errs.ErrNotFound
 	}
 	r.db.chats[chatID].Name = name
 

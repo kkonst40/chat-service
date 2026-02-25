@@ -41,10 +41,10 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return nil, errs.ErrNotFound
 	}
 	if err != nil {
-		return nil, &errs.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return &user, nil
@@ -62,7 +62,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
-		return nil, &errs.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -74,14 +74,14 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 			&user.ChatID,
 			&user.Role,
 		); err != nil {
-			return nil, &errs.DBError{Msg: err.Error()}
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
 
 		users = append(users, user)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, &errs.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return users, nil
@@ -110,7 +110,7 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 	}
 
 	if _, err := r.db.ExecContext(ctx, queryBuilder.String(), args...); err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -126,7 +126,7 @@ func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, u
 	log.Debug("deleting chat user in DB", "chatID", chatID, "userID", userID)
 
 	if _, err := r.db.ExecContext(ctx, query, userID, chatID); err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -144,16 +144,16 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 
 	res, err := r.db.ExecContext(ctx, query, newRole, userID, chatID)
 	if err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return &errs.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return errs.ErrNotFound
 	}
 
 	return nil
@@ -178,7 +178,7 @@ func (r *UserRepository) IsUserInChat(ctx context.Context, chatID, userID uuid.U
 	)
 
 	if err != nil {
-		return false, &errs.DBError{Msg: err.Error()}
+		return false, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return exists, nil

@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/errors"
@@ -32,7 +31,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, user
 	key := key{UserID: userID, ChatID: chatID}
 	user, ok := r.db.users[key]
 	if !ok {
-		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return nil, errs.ErrNotFound
 	}
 
 	return user, nil
@@ -89,7 +88,7 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	if _, ok := r.db.users[key]; ok {
 		r.db.users[key].Role = newRole
 	} else {
-		return &errs.NotFoundError{Msg: fmt.Sprintf("user (%v) in chat (%v) not found", userID, chatID)}
+		return errs.ErrNotFound
 	}
 
 	return nil

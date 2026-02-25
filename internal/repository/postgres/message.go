@@ -43,10 +43,10 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msgID)}
+		return nil, errs.ErrNotFound
 	}
 	if err != nil {
-		return nil, &errs.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return &msg, nil
@@ -67,7 +67,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 
 	rows, err := r.db.QueryContext(ctx, query, chatID, count, from)
 	if err != nil {
-		return nil, &errs.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -82,14 +82,14 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			&msg.Text,
 			&msg.CreatedAt,
 		); err != nil {
-			return nil, &errs.DBError{Msg: err.Error()}
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
 
 		messages = append(messages, msg)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, &errs.DBError{Msg: err.Error()}
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return messages, nil
@@ -115,7 +115,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 	)
 
 	if err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil
@@ -133,16 +133,16 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 
 	res, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
 	if err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return &errs.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msg.ID)}
+		return errs.ErrNotFound
 	}
 
 	return nil
@@ -158,7 +158,7 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 	log.Debug("deleting message in DB", "msgID", msgID)
 
 	if _, err := r.db.ExecContext(ctx, query, msgID); err != nil {
-		return &errs.DBError{Msg: err.Error()}
+		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 
 	return nil

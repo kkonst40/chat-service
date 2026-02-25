@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"fmt"
 	"sort"
 
 	"github.com/google/uuid"
@@ -27,7 +26,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 
 	message, ok := r.db.messages[msgID]
 	if !ok {
-		return nil, &errs.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msgID)}
+		return nil, errs.ErrNotFound
 	}
 
 	return message, nil
@@ -56,7 +55,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; ok {
-		return &errs.DBError{Msg: "collision error while creating message"}
+		return errs.ErrDatabase
 	}
 	r.db.messages[msg.ID] = msg
 
@@ -68,7 +67,7 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; !ok {
-		return &errs.NotFoundError{Msg: fmt.Sprintf("message (%v) not found", msg.ID)}
+		return errs.ErrNotFound
 	}
 	r.db.messages[msg.ID] = msg
 
