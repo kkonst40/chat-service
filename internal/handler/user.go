@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -31,14 +32,13 @@ func (h *UserHandler) GetChatUsers(w http.ResponseWriter, r *http.Request) {
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	users, err := h.userService.GetChatUsers(ctx, chatID, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -66,21 +66,19 @@ func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	var req dto.AddChatUsersRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := errs.MapError(handleValidationErr(err), log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
 	err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -94,34 +92,32 @@ func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	userID, err := uuid.Parse(r.PathValue("userId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid user ID format", log)
+		WriteError(w, fmt.Errorf("%w: user ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	var req dto.UpdateChatUserRoleRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := errs.MapError(handleValidationErr(err), log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
 	switch req.Role {
 	case model.Common, model.Admin, model.Owner:
 	default:
-		WriteString(w, http.StatusBadRequest, "Invalid user role name", log)
+		WriteError(w, fmt.Errorf("%w: role name", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	err = h.userService.UpdateUserRole(ctx, chatID, userID, req.Role, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -135,20 +131,19 @@ func (h *UserHandler) DeleteChatUser(w http.ResponseWriter, r *http.Request) {
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	userID, err := uuid.Parse(r.PathValue("userId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid user ID format", log)
+		WriteError(w, fmt.Errorf("%w: user ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	err = h.userService.DeleteChatUser(ctx, chatID, userID, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 

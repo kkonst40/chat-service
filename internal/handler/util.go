@@ -20,14 +20,9 @@ func WriteJSON(w http.ResponseWriter, statusCode int, body any, log *slog.Logger
 	}
 }
 
-func WriteString(w http.ResponseWriter, statusCode int, err string, log *slog.Logger) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-
-	body := errs.ErrResp{Message: err}
-	if err := json.NewEncoder(w).Encode(body); err != nil {
-		log.Error("JSON encoding error")
-	}
+func WriteError(w http.ResponseWriter, err error, log *slog.Logger) {
+	statusCode, resp := errs.MapError(err, log)
+	WriteJSON(w, statusCode, resp, log)
 }
 
 func bindJSON(r *http.Request, dst any, validate *validator.Validate) error {

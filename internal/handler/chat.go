@@ -31,14 +31,13 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	chat, err := h.chatService.GetChat(ctx, chatID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -57,8 +56,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 	chats, err := h.chatService.GetUserChats(ctx, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -85,15 +83,13 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 
 	var req dto.CreateChatRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := errs.MapError(handleValidationErr(err), log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
 	chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -111,21 +107,19 @@ func (h *ChatHandler) UpdateChatName(w http.ResponseWriter, r *http.Request) {
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	var req dto.UpdateChatNameRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		statusCode, resp := errs.MapError(handleValidationErr(err), log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, handleValidationErr(err), log)
 		return
 	}
 
 	err = h.chatService.UpdateChatName(ctx, chatID, req.Name, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -140,14 +134,13 @@ func (h *ChatHandler) DeleteChat(w http.ResponseWriter, r *http.Request) {
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	err = h.chatService.DeleteChat(ctx, chatID, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
@@ -164,19 +157,27 @@ func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) http.HandlerFunc {
 
 		chatID, err := uuid.Parse(r.PathValue("chatId"))
 		if err != nil {
-			WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+			WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 			return
 		}
 
 		if !h.chatService.AllowedToConnect(ctx, chatID, requesterID) {
-			WriteString(w, http.StatusNotFound, fmt.Sprintf("chat (%v) not found", chatID), log)
+			WriteError(
+				w,
+				fmt.Errorf(
+					"%w: user %v is not in chat %v",
+					errs.ErrForbidden,
+					requesterID,
+					chatID,
+				),
+				log,
+			)
 			return
 		}
 
 		err = wsServer.Connect(w, r, requesterID, chatID)
 		if err != nil {
-			statusCode, resp := errs.MapError(err, log)
-			WriteJSON(w, statusCode, resp, log)
+			WriteError(w, err, log)
 			return
 		}
 

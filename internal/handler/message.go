@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -28,26 +29,25 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid chat ID format", log)
+		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	from, err := strconv.ParseInt(r.PathValue("from"), 10, 64)
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid 'from' param in query", log)
+		WriteError(w, fmt.Errorf("%w: 'from' param", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	count, err := strconv.ParseInt(r.PathValue("count"), 10, 64)
 	if err != nil {
-		WriteString(w, http.StatusBadRequest, "Invalid 'count' param in query", log)
+		WriteError(w, fmt.Errorf("%w: 'count' param", errs.ErrInvalidRequest), log)
 		return
 	}
 
 	messages, err := h.messageService.GetChatMessages(ctx, chatID, from, count, requesterID)
 	if err != nil {
-		statusCode, resp := errs.MapError(err, log)
-		WriteJSON(w, statusCode, resp, log)
+		WriteError(w, err, log)
 		return
 	}
 
