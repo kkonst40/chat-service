@@ -84,7 +84,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 
 	if err := s.messageRepository.CreateMessage(ctx, msg); err != nil {
 		if errors.Is(err, errs.ErrChatNotFound) {
-			return nil, fmt.Errorf("%w: id %v", err, chatID)
+			return nil, fmt.Errorf("%w: ID %v", err, chatID)
 		}
 
 		return nil, fmt.Errorf("create message: %w", err)
@@ -100,6 +100,9 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
+		if errors.Is(err, errs.ErrMsgNotFound) {
+			return fmt.Errorf("%w: ID %v", err, msgID)
+		}
 		return fmt.Errorf("get message %v to update: %w", msgID, err)
 	}
 
@@ -122,6 +125,9 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 
 	err = s.messageRepository.UpdateMessage(ctx, newMsg)
 	if err != nil {
+		if errors.Is(err, errs.ErrMsgNotFound) {
+			return fmt.Errorf("%w: ID %v", err, msgID)
+		}
 		return fmt.Errorf("update message %v: %w", msgID, err)
 	}
 	log.Debug("message updated")
@@ -135,6 +141,9 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
+		if errors.Is(err, errs.ErrMsgNotFound) {
+			return fmt.Errorf("%w: ID %v", err, msgID)
+		}
 		return fmt.Errorf("get message %v to delete: %w", msgID, err)
 	}
 

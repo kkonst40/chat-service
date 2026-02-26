@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -74,6 +75,9 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userID
 
 	err = s.userRepository.AddChatUsers(ctx, chatID, existingUserIDs)
 	if err != nil {
+		if errors.Is(err, errs.ErrChatNotFound) {
+			return fmt.Errorf("%w: ID %v", err, chatID)
+		}
 		return fmt.Errorf("add chat %v users: %w", chatID, err)
 	}
 	log.Debug("chat users added")
@@ -97,11 +101,22 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 
 	requester, err := s.userRepository.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return fmt.Errorf(
+				"%w: user %v is not in chat %v",
+				errs.ErrForbidden,
+				requesterID,
+				chatID,
+			)
+		}
 		return fmt.Errorf("get requester %v to perform delete: %w", requesterID, err)
 	}
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return fmt.Errorf("%w: user ID %v, chat ID %v", err, userID, chatID)
+		}
 		return fmt.Errorf("get user %v to delete: %w", userID, err)
 	}
 
@@ -130,10 +145,22 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return fmt.Errorf("%w: user ID %v, chat ID %v", err, userID, chatID)
+		}
 		return fmt.Errorf("get requester %v to perform role update: %w", requesterID, err)
 	}
+
 	requester, err := s.userRepository.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return fmt.Errorf(
+				"%w: user %v is not in chat %v",
+				errs.ErrForbidden,
+				requesterID,
+				chatID,
+			)
+		}
 		return fmt.Errorf("get user %v to update:%w", userID, err)
 	}
 
@@ -148,6 +175,9 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 
 	err = s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
 	if err != nil {
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return fmt.Errorf("%w: user ID %v, chat ID %v", err, userID, chatID)
+		}
 		return fmt.Errorf("update user %v role (to %v) in chat %v: %w", userID, newRole, chatID, err)
 	}
 	log.Debug("user role updated")

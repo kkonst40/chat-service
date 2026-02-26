@@ -99,6 +99,9 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 
 	err := s.chatRepository.UpdateChatName(ctx, chatID, name)
 	if err != nil {
+		if errors.Is(err, errs.ErrChatNotFound) {
+			return fmt.Errorf("%w: ID %v", err, chatID)
+		}
 		return fmt.Errorf("update chat %v name: %w", chatID, err)
 	}
 	log.Debug("chat name updated")
