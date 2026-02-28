@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/errors"
@@ -57,6 +58,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 		LEFT JOIN chats c
 		ON u.chat_id = c.id
 		WHERE u.id = $1
+		ORDER BY c.last_message_at DESC
 	`
 
 	log.Debug("getting user chats from DB", "userID", userID)
@@ -91,8 +93,8 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
 	log := logger.FromContext(ctx)
 	const chatQuery = `
-		INSERT INTO chats (id, name)
-		VALUES ($1, $2)
+		INSERT INTO chats (id, name, last_message_at)
+		VALUES ($1, $2, $3)
 	`
 	const userQuery = `
 		INSERT INTO users (id, chat_id, role)
@@ -108,7 +110,7 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 
 	defer tx.Rollback()
 
-	if _, err = tx.ExecContext(ctx, chatQuery, chat.ID, chat.Name); err != nil {
+	if _, err = tx.ExecContext(ctx, chatQuery, chat.ID, chat.Name, time.Now()); err != nil {
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	if _, err = tx.ExecContext(ctx, userQuery, creatorID, chat.ID, model.Owner); err != nil {
