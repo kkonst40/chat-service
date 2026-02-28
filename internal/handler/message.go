@@ -22,10 +22,19 @@ func NewMessageHandler(newMessageService *service.MessageService) *MessageHandle
 	}
 }
 
+const (
+	defaultFrom  int64 = 0
+	defaultCount int64 = 20
+	maxCount     int64 = 100
+)
+
 func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
 	log := logger.FromContext(ctx)
+
+	from := defaultFrom
+	count := defaultCount
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
@@ -33,16 +42,20 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	from, err := strconv.ParseInt(r.PathValue("from"), 10, 64)
+	from, err = strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
 	if err != nil {
 		WriteError(w, fmt.Errorf("%w: 'from' param", errs.ErrInvalidRequest), log)
 		return
 	}
 
-	count, err := strconv.ParseInt(r.PathValue("count"), 10, 64)
+	count, err = strconv.ParseInt(r.URL.Query().Get("count"), 10, 64)
 	if err != nil {
 		WriteError(w, fmt.Errorf("%w: 'count' param", errs.ErrInvalidRequest), log)
 		return
+	}
+
+	if count > maxCount {
+		count = maxCount
 	}
 
 	messages, err := h.messageService.GetChatMessages(ctx, chatID, from, count, requesterID)
@@ -51,7 +64,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Info("chat messages retrieved", "chatID", chatID)
+	log.Debug("chat messages retrieved", "chatID", chatID)
 
 	resp := dto.GetMessagesResponse{
 		Messages: make([]dto.GetMessageResponse, 0, len(messages)),
