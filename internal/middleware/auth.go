@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/config"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/logger"
 )
@@ -34,7 +34,7 @@ func Auth(cfg *config.Config) Middleware {
 				return
 			}
 
-			log.Info("", "token", token.Value)
+			log.Debug("", "token", token.Value)
 
 			claims, err := validateToken(token.Value, cfg)
 			if err != nil {
@@ -43,7 +43,7 @@ func Auth(cfg *config.Config) Middleware {
 				return
 			}
 
-			log.Info("", "userID", claims.ID)
+			log.Debug("", "userID", claims.ID)
 
 			ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
 
