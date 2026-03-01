@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
 )
 
 func WriteJSON(w http.ResponseWriter, statusCode int, body any, log *slog.Logger) {
@@ -36,13 +36,7 @@ func bindJSON(r *http.Request, dst any, validate *validator.Validate) error {
 	return validate.Struct(dst)
 }
 
-type ContextKey string
-
-const (
-	UserIDCtxKey ContextKey = "userID"
-)
-
 func getUserID(ctx context.Context) uuid.UUID {
-	userID := ctx.Value(UserIDCtxKey).(string)
+	userID := ctx.Value("requesterID").(string)
 	return uuid.MustParse(userID)
 }
