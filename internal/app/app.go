@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/ichat/internal/dispatcher"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/integration/sso"
@@ -35,6 +36,22 @@ func New(cfg *config.Config) (*App, error) {
 
 	slog.Info("Successful connection to the database")
 
+	var (
+		userRepo    = postgres.NewUserRepository(db)
+		chatRepo    = postgres.NewChatRepository(db)
+		messageRepo = postgres.NewMessageRepository(db)
+	)
+
+	// for test
+	// var (
+	// 	memDB       = memory.NewDB()
+	// 	userRepo    = memory.NewUserRepository(memDB)
+	// 	chatRepo    = memory.NewChatRepository(memDB)
+	// 	messageRepo = memory.NewMessageRepository(memDB)
+	// )
+
+	slog.Info("Repositories are initialized")
+
 	conn, err := grpc.NewClient(
 		cfg.SSOAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -43,33 +60,27 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	userRepo := postgres.NewUserRepository(db)
-	chatRepo := postgres.NewChatRepository(db)
-	messageRepo := postgres.NewMessageRepository(db)
+	var (
+		ssoClient  = sso.NewSSOClient(pb.NewUserServiceClient(conn))
+		dispatcher = dispatcher.New(nil, userRepo)
 
-	// for test
-	// memDB := memory.NewDB()
-	// userRepo := memory.NewUserRepository(memDB)
-	// chatRepo := memory.NewChatRepository(memDB)
-	// messageRepo := memory.NewMessageRepository(memDB)
-
-	slog.Info("Repositories are initialized")
-
-	ssoClient := sso.NewSSOClient(pb.NewUserServiceClient(conn))
-	userService := service.NewUserService(userRepo, ssoClient)
-	chatService := service.NewChatService(chatRepo, userService)
-	messageService := service.NewMessageService(messageRepo, chatService, userService, 4096)
-
+		userService    = service.NewUserService(userRepo, dispatcher, ssoClient)
+		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
+		messageService = service.NewMessageService(messageRepo, chatService, userService, dispatcher, 4096)
+	)
 	slog.Info("Services are initialized")
 
-	validator := handler.NewValidator()
-	userHandler := handler.NewUserHandler(userService, validator)
-	chatHandler := handler.NewChatHandler(chatService, validator)
-	messageHandler := handler.NewMessageHandler(messageService)
-
+	var (
+		validator      = handler.NewValidator()
+		userHandler    = handler.NewUserHandler(userService, validator)
+		chatHandler    = handler.NewChatHandler(chatService, validator)
+		messageHandler = handler.NewMessageHandler(messageService, validator)
+	)
 	slog.Info("Handlers are initialized")
 
-	wsServer := ws.NewServer(chatService, messageService)
+	wsServer := ws.NewServer()
+	//temporary
+	dispatcher.WsServer = wsServer
 
 	slog.Info("WebSocket server is initialized")
 
@@ -86,6 +97,8 @@ func New(cfg *config.Config) (*App, error) {
 		Handler: router,
 	}
 
+	slog.Info("HTTP server is initialized")
+
 	return &App{
 		httpServer: httpServer,
 		wsServer:   wsServer,
@@ -101,8 +114,6 @@ func (a *App) Run() error {
 }
 
 func (a *App) Shutdown(ctx context.Context) {
-	a.wsServer.Shutdown()
-
 	if err := a.httpServer.Shutdown(ctx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err.Error())
 	}

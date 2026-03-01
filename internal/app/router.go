@@ -17,32 +17,28 @@ func NewRouter(
 	wsServer *ws.Server,
 	cfg *config.Config,
 ) http.Handler {
-	httpRouter := http.NewServeMux()
+	router := http.NewServeMux()
 
-	httpRouter.HandleFunc("GET /chats", chatHandler.GetChats)
-	httpRouter.HandleFunc("POST /chats", chatHandler.CreateChat)
-	httpRouter.HandleFunc("GET /chats/{chatId}", chatHandler.GetChat)
-	httpRouter.HandleFunc("PUT /chats/{chatId}", chatHandler.UpdateChatName)
-	httpRouter.HandleFunc("DELETE /chats/{chatId}", chatHandler.DeleteChat)
+	router.HandleFunc("GET /chats", chatHandler.GetChats)
+	router.HandleFunc("POST /chats", chatHandler.CreateChat)
+	router.HandleFunc("GET /chats/{chatId}", chatHandler.GetChat)
+	router.HandleFunc("PUT /chats/{chatId}", chatHandler.UpdateChatName)
+	router.HandleFunc("DELETE /chats/{chatId}", chatHandler.DeleteChat)
 
-	httpRouter.HandleFunc("GET /chatusers/{chatId}", userHandler.GetChatUsers)
-	httpRouter.HandleFunc("POST /chatusers/{chatId}", userHandler.AddChatUsers)
-	httpRouter.HandleFunc("PUT /chatusers/{chatId}/{userId}", userHandler.UpdateChatUserRole)
-	httpRouter.HandleFunc("DELETE /chatusers/{chatId}/{userId}", userHandler.DeleteChatUser)
+	router.HandleFunc("GET /chatusers/{chatId}", userHandler.GetChatUsers)
+	router.HandleFunc("POST /chatusers/{chatId}", userHandler.AddChatUsers)
+	router.HandleFunc("PUT /chatusers/{chatId}/{userId}", userHandler.UpdateChatUserRole)
+	router.HandleFunc("DELETE /chatusers/{chatId}/{userId}", userHandler.DeleteChatUser)
 
-	httpRouter.HandleFunc("GET /chatmessages/{chatId}", messageHandler.GetChatMessages)
+	router.HandleFunc("GET /chatmessages/{chatId}", messageHandler.GetChatMessages)
+	router.HandleFunc("POST /chatmessages/{chatId}", messageHandler.CreateMessage)
+	router.HandleFunc("PUT /chatmessages/{msgId}", messageHandler.UpdateMessage)
+	router.HandleFunc("DELETE /chatmessages/{msgId}", messageHandler.DeleteMessage)
 
 	// for test
-	httpRouter.HandleFunc("GET /chatlist", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/chatlist.html")
+	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
 	})
-	httpRouter.HandleFunc("GET /chatroom", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/chatroom.html")
-	})
-	//
-
-	wsRouter := http.NewServeMux()
-	wsRouter.HandleFunc("GET /connect/{chatId}", chatHandler.ConnectToChat(wsServer))
 
 	httpStack := middleware.CreateStack(
 		middleware.Recovery,
@@ -58,8 +54,8 @@ func NewRouter(
 	)
 
 	mainRouter := http.NewServeMux()
-	mainRouter.Handle("/", httpStack(httpRouter))
-	mainRouter.Handle("/", wsStack(wsRouter))
+	mainRouter.Handle("/", httpStack(router))
+	mainRouter.Handle("GET /connect", wsStack(chatHandler.Connect(wsServer)))
 
 	return mainRouter
 }
