@@ -6,21 +6,29 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	"github.com/kkonst40/ichat/internal/dispatcher"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/event"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
 type ChatService struct {
 	chatRepository repository.ChatRepository
 	userService    *UserService
+	dispatcher     *dispatcher.Dispatcher
 }
 
-func NewChatService(newChatRepository repository.ChatRepository, newUserService *UserService) *ChatService {
+func NewChatService(
+	chatRepository repository.ChatRepository,
+	userService *UserService,
+	dispatcher *dispatcher.Dispatcher,
+) *ChatService {
 	service := ChatService{
-		chatRepository: newChatRepository,
-		userService:    newUserService,
+		chatRepository: chatRepository,
+		userService:    userService,
+		dispatcher:     dispatcher,
 	}
 
 	return &service
@@ -81,6 +89,14 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 	}
 	log.Debug("chat users added")
 
+	s.dispatcher.Publish(event.Event{
+		Type:   event.CreateChat,
+		ChatID: newID,
+		Payload: event.CreateChatEvent{
+			Name: name,
+		},
+	})
+
 	return chat, nil
 }
 
@@ -106,6 +122,14 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 	}
 	log.Debug("chat name updated")
 
+	s.dispatcher.Publish(event.Event{
+		Type:   event.UpdateChat,
+		ChatID: chatID,
+		Payload: event.UpdateChatEvent{
+			Name: name,
+		},
+	})
+
 	return nil
 }
 
@@ -128,6 +152,12 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	}
 	log.Debug("chat deleted")
 
+	s.dispatcher.Publish(event.Event{
+		Type:    event.DeleteChat,
+		ChatID:  chatID,
+		Payload: event.DeleteChatEvent{},
+	})
+
 	return nil
 }
 
@@ -138,8 +168,4 @@ func (s *ChatService) ChatExists(ctx context.Context, chatID uuid.UUID) bool {
 	}
 
 	return exists
-}
-
-func (s *ChatService) AllowedToConnect(ctx context.Context, chatID, userID uuid.UUID) bool {
-	return s.userService.userInChat(ctx, chatID, userID)
 }

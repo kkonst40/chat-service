@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	"github.com/kkonst40/ichat/internal/dispatcher"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/event"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -17,26 +19,29 @@ type MessageService struct {
 	messageRepository repository.MessageRepository
 	chatService       *ChatService
 	userService       *UserService
+	dispatcher        *dispatcher.Dispatcher
 	textMaxLength     int
 }
 
 func NewMessageService(
-	newMessageRepository repository.MessageRepository,
-	newChatService *ChatService,
-	newUserService *UserService,
+	messageRepository repository.MessageRepository,
+	chatService *ChatService,
+	userService *UserService,
+	dispatcher *dispatcher.Dispatcher,
 	textMaxLength int,
 ) *MessageService {
 	service := MessageService{
-		messageRepository: newMessageRepository,
-		chatService:       newChatService,
-		userService:       newUserService,
+		messageRepository: messageRepository,
+		chatService:       chatService,
+		userService:       userService,
+		dispatcher:        dispatcher,
 		textMaxLength:     textMaxLength,
 	}
 
 	return &service
 }
 
-func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, from, count int64, requesterID uuid.UUID) ([]model.Message, error) {
+func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64, requesterID uuid.UUID) ([]model.Message, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("messageService.GetChatMessages", "chatID", chatID)
 
@@ -91,6 +96,16 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	}
 	log.Debug("message created")
 
+	s.dispatcher.Publish(event.Event{
+		Type:   event.CreateMsg,
+		ChatID: chatID,
+		Payload: event.CreateMsgEvent{
+			MsgID:  newID,
+			UserID: userID,
+			Text:   text,
+		},
+	})
+
 	return msg, nil
 }
 
@@ -131,6 +146,15 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 		return fmt.Errorf("update message %v: %w", msgID, err)
 	}
 	log.Debug("message updated")
+
+	s.dispatcher.Publish(event.Event{
+		Type:   event.UpdateMsg,
+		ChatID: msg.ChatID,
+		Payload: event.UpdateMsgEvent{
+			MsgID: msgID,
+			Text:  text,
+		},
+	})
 
 	return nil
 }
@@ -180,6 +204,14 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 		return fmt.Errorf("delete message %v: %w", msgID, err)
 	}
 	log.Debug("message deleted")
+
+	s.dispatcher.Publish(event.Event{
+		Type:   event.DeleteMsg,
+		ChatID: msg.ChatID,
+		Payload: event.DeleteMsgEvent{
+			MsgID: msgID,
+		},
+	})
 
 	return nil
 }

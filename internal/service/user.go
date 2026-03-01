@@ -6,24 +6,28 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	"github.com/kkonst40/ichat/internal/dispatcher"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
 type UserService struct {
 	userRepository repository.UserRepository
+	dispatcher     *dispatcher.Dispatcher
 	ssoClient      *sso.SSOClient
 }
 
 func NewUserService(
-	newUserRepository repository.UserRepository,
+	userRepository repository.UserRepository,
+	dispatcher *dispatcher.Dispatcher,
 	ssoClient *sso.SSOClient,
 ) *UserService {
 	return &UserService{
-		userRepository: newUserRepository,
+		userRepository: userRepository,
+		dispatcher:     dispatcher,
 		ssoClient:      ssoClient,
 	}
 }
