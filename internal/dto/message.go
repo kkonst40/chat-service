@@ -17,3 +17,11 @@ type GetMessageResponse struct {
 type GetMessagesResponse struct {
 	Messages []GetMessageResponse `json:"messages"`
 }
+
+type CreateMessageRequest struct {
+	Text string `json:"text" validate:"required"`
+}
+
+type UpdateMessageRequest struct {
+	Text string `json:"text" validate:"required"`
+}
