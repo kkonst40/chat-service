@@ -6,10 +6,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/dto"
-	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -42,7 +42,7 @@ func (h *UserHandler) GetChatUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("chat users retrieved", "chatID", chatID)
+	log.Debug("chat users retrieved", "chatID", chatID)
 
 	resp := dto.GetChatUsersResponse{
 		Users: make([]dto.GetUserResponse, 0, len(users)),
@@ -82,7 +82,7 @@ func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("chat users added", "chatID", chatID)
+	log.Debug("chat users added", "chatID", chatID)
 }
 
 func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +121,7 @@ func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Info("chat user role updated", "chatID", chatID, "userID", userID)
+	log.Debug("chat user role updated", "chatID", chatID, "userID", userID)
 }
 
 func (h *UserHandler) DeleteChatUser(w http.ResponseWriter, r *http.Request) {
@@ -147,5 +147,5 @@ func (h *UserHandler) DeleteChatUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("chat user deleted", "chatID", chatID, "userID", userID)
+	log.Debug("chat user deleted", "chatID", chatID, "userID", userID)
 }

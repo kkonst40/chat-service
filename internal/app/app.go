@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/ichat/internal/dispatcher"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 	"github.com/kkonst40/ichat/internal/handler"
+	"github.com/kkonst40/ichat/internal/hub"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/repository/postgres"
 	"github.com/kkonst40/ichat/internal/service"
-	"github.com/kkonst40/ichat/internal/ws"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -22,9 +23,8 @@ import (
 )
 
 type App struct {
-	httpServer *http.Server
-	wsServer   *ws.Server
-	db         *sql.DB
+	server *http.Server
+	db     *sql.DB
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -32,8 +32,22 @@ func New(cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	slog.Info("Successful connection to the database")
+
+	var (
+		userRepo    = postgres.NewUserRepository(db)
+		chatRepo    = postgres.NewChatRepository(db)
+		messageRepo = postgres.NewMessageRepository(db)
+	)
+
+	// for test
+	// var (
+	// 	memDB       = memory.NewDB()
+	// 	userRepo    = memory.NewUserRepository(memDB)
+	// 	chatRepo    = memory.NewChatRepository(memDB)
+	// 	messageRepo = memory.NewMessageRepository(memDB)
+	// )
+	slog.Info("Repositories are initialized")
 
 	conn, err := grpc.NewClient(
 		cfg.SSOAddress,
@@ -43,41 +57,31 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	userRepo := postgres.NewUserRepository(db)
-	chatRepo := postgres.NewChatRepository(db)
-	messageRepo := postgres.NewMessageRepository(db)
+	var (
+		ssoClient  = sso.NewSSOClient(pb.NewUserServiceClient(conn))
+		wsHub      = hub.NewHub()
+		dispatcher = dispatcher.New(wsHub, userRepo)
 
-	// for test
-	// memDB := memory.NewDB()
-	// userRepo := memory.NewUserRepository(memDB)
-	// chatRepo := memory.NewChatRepository(memDB)
-	// messageRepo := memory.NewMessageRepository(memDB)
-
-	slog.Info("Repositories are initialized")
-
-	ssoClient := sso.NewSSOClient(pb.NewUserServiceClient(conn))
-	userService := service.NewUserService(userRepo, ssoClient)
-	chatService := service.NewChatService(chatRepo, userService)
-	messageService := service.NewMessageService(messageRepo, chatService, userService, 4096)
-
+		userService    = service.NewUserService(userRepo, dispatcher, ssoClient)
+		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
+		messageService = service.NewMessageService(messageRepo, chatService, userService, dispatcher, 4096)
+	)
 	slog.Info("Services are initialized")
 
-	validator := handler.NewValidator()
-	userHandler := handler.NewUserHandler(userService, validator)
-	chatHandler := handler.NewChatHandler(chatService, validator)
-	messageHandler := handler.NewMessageHandler(messageService)
-
+	var (
+		validator      = handler.NewValidator()
+		userHandler    = handler.NewUserHandler(userService, validator)
+		chatHandler    = handler.NewChatHandler(chatService, validator)
+		messageHandler = handler.NewMessageHandler(messageService, validator)
+		wsHandler      = handler.NewWSHandler(wsHub)
+	)
 	slog.Info("Handlers are initialized")
-
-	wsServer := ws.NewServer(chatService, messageService)
-
-	slog.Info("WebSocket server is initialized")
 
 	router := NewRouter(
 		chatHandler,
 		userHandler,
 		messageHandler,
-		wsServer,
+		wsHandler,
 		cfg,
 	)
 
@@ -86,24 +90,23 @@ func New(cfg *config.Config) (*App, error) {
 		Handler: router,
 	}
 
+	slog.Info("HTTP server is initialized")
+
 	return &App{
-		httpServer: httpServer,
-		wsServer:   wsServer,
-		db:         db,
+		server: httpServer,
+		db:     db,
 	}, nil
 }
 
 func (a *App) Run() error {
-	if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("HTTP serve error: %w", err)
 	}
 	return nil
 }
 
 func (a *App) Shutdown(ctx context.Context) {
-	a.wsServer.Shutdown()
-
-	if err := a.httpServer.Shutdown(ctx); err != nil {
+	if err := a.server.Shutdown(ctx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err.Error())
 	}
 

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
-	"github.com/kkonst40/ichat/internal/model"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -35,6 +35,20 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, user
 	}
 
 	return user, nil
+}
+
+func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
+	r.db.mu.RLock()
+	defer r.db.mu.RUnlock()
+
+	result := make([]uuid.UUID, 0)
+	for _, user := range r.db.users {
+		if user.ChatID == chatID {
+			result = append(result, user.ID)
+		}
+	}
+
+	return result, nil
 }
 
 func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error) {

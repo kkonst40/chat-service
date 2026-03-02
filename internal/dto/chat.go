@@ -1,10 +1,15 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type GetChatResponse struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+	ID            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	LastMessageAt time.Time `json:"lastMessageAt"`
 }
 
 type GetChatsResponse struct {

@@ -3,10 +3,11 @@ package memory
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
-	"github.com/kkonst40/ichat/internal/model"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -32,22 +33,23 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	return message, nil
 }
 
-func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from, count int64) ([]model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64) ([]model.Message, error) {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
 	messages := make([]model.Message, 0)
+	fromTime := r.db.messages[from].CreatedAt
 	for _, v := range r.db.messages {
-		if v.ChatID == chatID {
+		if v.ChatID == chatID && v.CreatedAt.Before(fromTime) {
 			messages = append(messages, *v)
 		}
 	}
 
-	sort.Slice(messages, func(i, j int) bool {
+	sort.Slice(messages[:count], func(i, j int) bool {
 		return messages[i].CreatedAt.After(messages[j].CreatedAt)
 	})
 
-	return messages[from : from+count], nil
+	return messages[:count], nil
 }
 
 func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Message) error {
@@ -58,6 +60,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 		return errs.ErrDatabase
 	}
 	r.db.messages[msg.ID] = msg
+	r.db.chats[msg.ChatID].LastMessageAt = time.Now()
 
 	return nil
 }
