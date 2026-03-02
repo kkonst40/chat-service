@@ -4,21 +4,21 @@ import (
 	"context"
 
 	"github.com/kkonst40/ichat/internal/domain/event"
+	"github.com/kkonst40/ichat/internal/hub"
 	"github.com/kkonst40/ichat/internal/repository"
-	"github.com/kkonst40/ichat/internal/ws"
 )
 
 type Dispatcher struct {
-	WsServer *ws.Server
+	WsHub    *hub.Hub
 	userRepo repository.UserRepository
 }
 
 func New(
-	wsServer *ws.Server,
+	wsHub *hub.Hub,
 	userRepo repository.UserRepository,
 ) *Dispatcher {
 	return &Dispatcher{
-		WsServer: wsServer,
+		WsHub:    wsHub,
 		userRepo: userRepo,
 	}
 }
@@ -26,5 +26,5 @@ func New(
 func (d *Dispatcher) Publish(e event.Event) {
 	userIDs, _ := d.userRepo.GetChatUserIDs(context.TODO(), e.ChatID)
 
-	d.WsServer.SendEvent(userIDs, e)
+	d.WsHub.BroadcastToUsers(userIDs, e)
 }
