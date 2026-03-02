@@ -2,9 +2,10 @@ package memory
 
 import (
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/model"
+	"github.com/kkonst40/ichat/internal/domain/model"
 )
 
 type MemoryDB struct {
@@ -21,8 +22,8 @@ func NewDB() *MemoryDB {
 		users:    make(map[key]*model.User),
 	}
 
-	userID1 := uuid.MustParse("019bad77-a48a-712b-af62-65e0cc331079")
-	userID2 := uuid.MustParse("019baab0-f622-76c6-9a56-d5782ef27693")
+	userID1 := uuid.MustParse("019bad77-a48a-712b-af62-111111111111")
+	userID2 := uuid.MustParse("019baab0-f622-76c6-9a56-222222222222")
 
 	chatID0 := uuid.MustParse("018f95a6-8d27-7e03-822c-6a81ce0d1f4b")
 	chatID1 := uuid.MustParse("018f95a6-8d28-7b41-8d9f-12e8b341a6c5")
@@ -35,16 +36,16 @@ func NewDB() *MemoryDB {
 	chatID8 := uuid.MustParse("018f95a6-8d2b-7586-c246-8ace13579bdf")
 	chatID9 := uuid.MustParse("018f95a6-8d2b-76cf-d369-147f258b036a")
 
-	db.chats[chatID0] = &model.Chat{ID: chatID0, Name: "Chat0"}
-	db.chats[chatID1] = &model.Chat{ID: chatID1, Name: "Chat1"}
-	db.chats[chatID2] = &model.Chat{ID: chatID2, Name: "Chat2"}
-	db.chats[chatID3] = &model.Chat{ID: chatID3, Name: "Chat3"}
-	db.chats[chatID4] = &model.Chat{ID: chatID4, Name: "Chat4"}
-	db.chats[chatID5] = &model.Chat{ID: chatID5, Name: "Chat5"}
-	db.chats[chatID6] = &model.Chat{ID: chatID6, Name: "Chat6"}
-	db.chats[chatID7] = &model.Chat{ID: chatID7, Name: "Chat7"}
-	db.chats[chatID8] = &model.Chat{ID: chatID8, Name: "Chat8"}
-	db.chats[chatID9] = &model.Chat{ID: chatID9, Name: "Chat9"}
+	db.chats[chatID0] = &model.Chat{ID: chatID0, Name: "Chat0", LastMessageAt: time.Now().Add(time.Second * 0)}
+	db.chats[chatID1] = &model.Chat{ID: chatID1, Name: "Chat1", LastMessageAt: time.Now().Add(time.Second * 1)}
+	db.chats[chatID2] = &model.Chat{ID: chatID2, Name: "Chat2", LastMessageAt: time.Now().Add(time.Second * 2)}
+	db.chats[chatID3] = &model.Chat{ID: chatID3, Name: "Chat3", LastMessageAt: time.Now().Add(time.Second * 3)}
+	db.chats[chatID4] = &model.Chat{ID: chatID4, Name: "Chat4", LastMessageAt: time.Now().Add(time.Second * 4)}
+	db.chats[chatID5] = &model.Chat{ID: chatID5, Name: "Chat5", LastMessageAt: time.Now().Add(time.Second * 5)}
+	db.chats[chatID6] = &model.Chat{ID: chatID6, Name: "Chat6", LastMessageAt: time.Now().Add(time.Second * 6)}
+	db.chats[chatID7] = &model.Chat{ID: chatID7, Name: "Chat7", LastMessageAt: time.Now().Add(time.Second * 7)}
+	db.chats[chatID8] = &model.Chat{ID: chatID8, Name: "Chat8", LastMessageAt: time.Now().Add(time.Second * 8)}
+	db.chats[chatID9] = &model.Chat{ID: chatID9, Name: "Chat9", LastMessageAt: time.Now().Add(time.Second * 9)}
 
 	db.users[key{UserID: userID1, ChatID: chatID0}] = &model.User{ID: userID1, ChatID: chatID0, Role: model.Admin}
 	db.users[key{UserID: userID1, ChatID: chatID1}] = &model.User{ID: userID1, ChatID: chatID1, Role: model.Admin}

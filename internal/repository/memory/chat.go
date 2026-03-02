@@ -2,10 +2,11 @@ package memory
 
 import (
 	"context"
+	"sort"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
-	"github.com/kkonst40/ichat/internal/model"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -41,6 +42,10 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID) ([]
 			chats = append(chats, *r.db.chats[user.ChatID])
 		}
 	}
+
+	sort.Slice(chats, func(i, j int) bool {
+		return chats[i].LastMessageAt.After(chats[j].LastMessageAt)
+	})
 
 	return chats, nil
 }

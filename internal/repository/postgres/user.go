@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -50,6 +50,39 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	}
 
 	return &user, nil
+}
+
+func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
+	log := logger.FromContext(ctx)
+	const query = `
+		SELECT id
+		FROM users
+		WHERE chat_id = $1
+	`
+
+	log.Debug("getting chat userIDs from DB", "chatID", chatID)
+
+	rows, err := r.db.QueryContext(ctx, query, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	var userIDs []uuid.UUID
+	for rows.Next() {
+		var userID uuid.UUID
+		if err := rows.Scan(&userID); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+
+		userIDs = append(userIDs, userID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+
+	return userIDs, nil
 }
 
 func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error) {

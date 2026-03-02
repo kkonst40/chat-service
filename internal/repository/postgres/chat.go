@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 

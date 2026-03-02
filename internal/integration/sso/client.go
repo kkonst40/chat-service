@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 )
 

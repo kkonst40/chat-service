@@ -8,9 +8,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/ichat/internal/errors"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/logger"
-	"github.com/kkonst40/ichat/internal/model"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -54,20 +54,34 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	return &msg, nil
 }
 
-func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from, count int64) ([]model.Message, error) {
+func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64) ([]model.Message, error) {
 	log := logger.FromContext(ctx)
+	const queryStart = `
+        SELECT id, user_id, chat_id, text, created_at
+        WHERE chat_id = $1
+        ORDER BY id DESC
+        LIMIT $2
+	`
+
 	const query = `
 		SELECT id, user_id, chat_id, text, created_at
 		FROM messages
 		WHERE chat_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2
-		OFFSET $3
+  			AND id < $2
+		ORDER BY id DESC
+		LIMIT $3;
 	`
 
 	log.Debug("getting chat messages from DB", "chatID", chatID)
 
-	rows, err := r.db.QueryContext(ctx, query, chatID, count, from)
+	var rows *sql.Rows
+	var err error
+	if from == uuid.Nil {
+		rows, err = r.db.QueryContext(ctx, queryStart, chatID, count)
+	} else {
+		rows, err = r.db.QueryContext(ctx, query, chatID, from, count)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
