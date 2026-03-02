@@ -6,11 +6,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/dto"
-	errs "github.com/kkonst40/ichat/internal/errors"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
-	"github.com/kkonst40/ichat/internal/ws"
 )
 
 type ChatHandler struct {
@@ -60,7 +59,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("user chats retrieved")
+	log.Debug("user chats retrieved")
 
 	resp := dto.GetChatsResponse{
 		Chats: make([]dto.GetChatResponse, 0, len(chats)),
@@ -68,8 +67,9 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 	for _, chat := range chats {
 		resp.Chats = append(resp.Chats, dto.GetChatResponse{
-			ID:   chat.ID,
-			Name: chat.Name,
+			ID:            chat.ID,
+			Name:          chat.Name,
+			LastMessageAt: chat.LastMessageAt,
 		})
 	}
 
@@ -93,7 +93,7 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("chat created", "chatID", chat.ID)
+	log.Debug("chat created", "chatID", chat.ID)
 	location := fmt.Sprintf("/chats/%s", chat.ID.String())
 
 	w.Header().Set("Location", location)
@@ -123,7 +123,7 @@ func (h *ChatHandler) UpdateChatName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("chat name updated", "chatID", chatID)
+	log.Debug("chat name updated", "chatID", chatID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -144,43 +144,7 @@ func (h *ChatHandler) DeleteChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info("chat deleted", "chatID", chatID)
+	log.Debug("chat deleted", "chatID", chatID)
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *ChatHandler) ConnectToChat(wsServer *ws.Server) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		requesterID := getUserID(ctx)
-		log := logger.FromContext(ctx)
-
-		chatID, err := uuid.Parse(r.PathValue("chatId"))
-		if err != nil {
-			WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
-			return
-		}
-
-		if !h.chatService.AllowedToConnect(ctx, chatID, requesterID) {
-			WriteError(
-				w,
-				fmt.Errorf(
-					"%w: user %v is not in chat %v",
-					errs.ErrForbidden,
-					requesterID,
-					chatID,
-				),
-				log,
-			)
-			return
-		}
-
-		err = wsServer.Connect(w, r, requesterID, chatID)
-		if err != nil {
-			WriteError(w, err, log)
-			return
-		}
-
-		log.Info("connected to chat", "chatID", chatID)
-	}
 }
