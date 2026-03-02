@@ -7,14 +7,13 @@ import (
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/middleware"
-	"github.com/kkonst40/ichat/internal/ws"
 )
 
 func NewRouter(
 	chatHandler *handler.ChatHandler,
 	userHandler *handler.UserHandler,
 	messageHandler *handler.MessageHandler,
-	wsServer *ws.Server,
+	wsHandler *handler.WSHandler,
 	cfg *config.Config,
 ) http.Handler {
 	router := http.NewServeMux()
@@ -55,7 +54,7 @@ func NewRouter(
 
 	mainRouter := http.NewServeMux()
 	mainRouter.Handle("/", httpStack(router))
-	mainRouter.Handle("GET /connect", wsStack(chatHandler.Connect(wsServer)))
+	mainRouter.Handle("GET /connect", wsStack(http.HandlerFunc(wsHandler.HandleConnection)))
 
 	return mainRouter
 }
