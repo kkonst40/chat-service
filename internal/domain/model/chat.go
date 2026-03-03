@@ -7,7 +7,8 @@ import (
 )
 
 type Chat struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	LastMessageAt time.Time `json:"lastMessageAt"`
+	ID            uuid.UUID
+	Name          string
+	IsGroup       bool
+	LastMessageAt time.Time
 }
