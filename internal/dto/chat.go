@@ -9,6 +9,7 @@ import (
 type GetChatResponse struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
+	IsGroup       bool      `json:"isGroup"`
 	LastMessageAt time.Time `json:"lastMessageAt"`
 }
 

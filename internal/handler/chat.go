@@ -42,8 +42,10 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := dto.GetChatResponse{
-		ID:   chat.ID,
-		Name: chat.Name,
+		ID:            chat.ID,
+		Name:          chat.Name,
+		IsGroup:       chat.IsGroup,
+		LastMessageAt: chat.LastMessageAt,
 	}
 
 	WriteJSON(w, http.StatusOK, resp, log)
@@ -81,6 +83,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 		resp.Chats = append(resp.Chats, dto.GetChatResponse{
 			ID:            chat.ID,
 			Name:          chat.Name,
+			IsGroup:       chat.IsGroup,
 			LastMessageAt: chat.LastMessageAt,
 		})
 	}
