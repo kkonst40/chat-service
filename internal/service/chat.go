@@ -50,11 +50,11 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Cha
 	return chat, nil
 }
 
-func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID) ([]model.Chat, error) {
+func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {
 	log := logger.FromContext(ctx)
 	log.Debug("chatService.GetUserChats")
 
-	chats, err := s.chatRepository.GetUserChats(ctx, userID)
+	chats, err := s.chatRepository.GetUserChats(ctx, userID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
 	}
@@ -98,6 +98,10 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 	})
 
 	return chat, nil
+}
+
+func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.UUID) (*model.Chat, error) {
+	return nil, nil
 }
 
 func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
@@ -158,6 +162,10 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 		Payload: event.DeleteChatEvent{},
 	})
 
+	return nil
+}
+
+func (s *ChatService) DeletePersonalChat(ctx context.Context, user1, user2 uuid.UUID) error {
 	return nil
 }
 
