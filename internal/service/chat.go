@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dispatcher"
@@ -73,8 +74,10 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 	}
 
 	chat := &model.Chat{
-		ID:   newID,
-		Name: name,
+		ID:            newID,
+		Name:          name,
+		IsGroup:       true,
+		LastMessageAt: time.Now(),
 	}
 
 	err = s.chatRepository.CreateChat(ctx, chat, requesterID)
@@ -101,7 +104,36 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 }
 
 func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.UUID) (*model.Chat, error) {
-	return nil, nil
+	log := logger.FromContext(ctx)
+	log.Debug("chatService.CreatePersonalChat", "user1", user1, "user2", user2)
+
+	newID, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("%w: generating uuid: %w", errs.ErrInternal, err)
+	}
+
+	chat := &model.Chat{
+		ID:            newID,
+		Name:          "",
+		IsGroup:       false,
+		LastMessageAt: time.Now(),
+	}
+
+	err = s.chatRepository.CreatePersonalChat(ctx, chat, user1, user2)
+	if err != nil {
+		return nil, fmt.Errorf("create personal chat: %w", err)
+	}
+	log.Debug("personal chat created")
+
+	s.dispatcher.Publish(event.Event{
+		Type:   event.CreateChat,
+		ChatID: newID,
+		Payload: event.CreateChatEvent{
+			Name: "",
+		},
+	})
+
+	return chat, nil
 }
 
 func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
@@ -150,7 +182,12 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 		)
 	}
 
-	err := s.chatRepository.DeleteChat(ctx, chatID)
+	userIDs, err := s.userService.GetChatUserIDs(ctx, chatID)
+	if err != nil {
+		return fmt.Errorf("get chat %v user ids: %w", chatID, err)
+	}
+
+	err = s.chatRepository.DeleteChat(ctx, chatID)
 	if err != nil {
 		return fmt.Errorf("delete chat %v: %w", chatID, err)
 	}
@@ -160,12 +197,8 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 		Type:    event.DeleteChat,
 		ChatID:  chatID,
 		Payload: event.DeleteChatEvent{},
-	})
+	}, userIDs...)
 
-	return nil
-}
-
-func (s *ChatService) DeletePersonalChat(ctx context.Context, user1, user2 uuid.UUID) error {
 	return nil
 }
 
