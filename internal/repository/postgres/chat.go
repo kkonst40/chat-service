@@ -25,7 +25,7 @@ func NewChatRepository(db *sql.DB) *ChatRepository {
 func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
 	log := logger.FromContext(ctx)
 	const query = `
-		SELECT id, name, is_group
+		SELECT id, name, is_group, last_message_at
 		FROM chats
 		WHERE id = $1
 	`
@@ -36,6 +36,8 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	err := r.db.QueryRowContext(ctx, query, chatID).Scan(
 		&chat.ID,
 		&chat.Name,
+		&chat.IsGroup,
+		&chat.LastMessageAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -52,7 +54,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 	log := logger.FromContext(ctx)
 
 	const queryAll = `
-		SELECT c.id, c.name, c.is_group
+		SELECT c.id, c.name, c.is_group, c.last_message_at
 		FROM users u
 		LEFT JOIN chats c
 		ON u.chat_id = c.id
@@ -61,7 +63,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 	`
 
 	const queryOneOf = `
-		SELECT c.id, c.name, c.is_group
+		SELECT c.id, c.name, c.is_group, c.last_message_at
 		FROM users u
 		LEFT JOIN chats c
 		ON u.chat_id = c.id
@@ -95,6 +97,8 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 		if err := rows.Scan(
 			&chat.ID,
 			&chat.Name,
+			&chat.IsGroup,
+			&chat.LastMessageAt,
 		); err != nil {
 			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 		}
