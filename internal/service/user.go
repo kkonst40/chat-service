@@ -59,6 +59,19 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	return user, nil
 }
 
+func (s *UserService) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
+	log := logger.FromContext(ctx)
+	log.Debug("userService.GetChatUserIDs", "chatID", chatID)
+
+	userIDs, err := s.userRepository.GetChatUserIDs(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("get chat %v user ids: %w", chatID, err)
+	}
+	log.Debug("chat user ids retrieved")
+
+	return userIDs, nil
+}
+
 func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID, requesterID uuid.UUID) error {
 	log := logger.FromContext(ctx)
 	log.Debug("userService.AddChatUsers", "chatID", chatID)
