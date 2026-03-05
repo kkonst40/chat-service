@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -23,14 +23,13 @@ func NewChatRepository(db *sql.DB) *ChatRepository {
 }
 
 func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
-	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, name, is_group, last_message_at
 		FROM chats
 		WHERE id = $1
 	`
 
-	log.Debug("getting chat from DB", "chatID", chatID)
+	slog.DebugContext(ctx, "getting chat from DB", "chatID", chatID)
 
 	var chat model.Chat
 	err := r.db.QueryRowContext(ctx, query, chatID).Scan(
@@ -51,8 +50,6 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 }
 
 func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {
-	log := logger.FromContext(ctx)
-
 	const queryAll = `
 		SELECT c.id, c.name, c.is_group, c.last_message_at
 		FROM users u
@@ -71,7 +68,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 		ORDER BY c.last_message_at DESC
 	`
 
-	log.Debug("getting user chats from DB", "userID", userID)
+	slog.DebugContext(ctx, "getting user chats from DB", "userID", userID)
 
 	var rows *sql.Rows
 	var err error
@@ -114,7 +111,6 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 }
 
 func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
-	log := logger.FromContext(ctx)
 	const chatQuery = `
 		INSERT INTO chats (id, name, is_group, last_message_at)
 		VALUES ($1, $2, $3, $4)
@@ -124,7 +120,7 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 		VALUES ($1, $2, $3)
 	`
 
-	log.Debug("creating new chat with creator user in DB", "chatID", chat.ID, "userID", creatorID)
+	slog.DebugContext(ctx, "creating new chat with creator user in DB", "chatID", chat.ID, "userID", creatorID)
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -208,14 +204,13 @@ func (r *ChatRepository) CreatePersonalChat(ctx context.Context, chat *model.Cha
 }
 
 func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		UPDATE chats
 		SET name = $1
 		WHERE id = $2
 	`
 
-	log.Debug("updating name of the chat in DB", "chatID", chatID, "new_name", name)
+	slog.DebugContext(ctx, "updating name of the chat in DB", "chatID", chatID, "new_name", name)
 
 	res, err := r.db.ExecContext(ctx, query, name, chatID)
 	if err != nil {
@@ -235,13 +230,12 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 }
 
 func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		DELETE FROM chats
 		WHERE id = $1
 	`
 
-	log.Debug("deleting the chat from DB", "chatID", chatID)
+	slog.DebugContext(ctx, "deleting the chat from DB", "chatID", chatID)
 
 	if _, err := r.db.ExecContext(ctx, query, chatID); err != nil {
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
@@ -251,7 +245,6 @@ func (r *ChatRepository) DeleteChat(ctx context.Context, chatID uuid.UUID) error
 }
 
 func (r *ChatRepository) DeletePersonalChat(ctx context.Context, userID1, userID2 uuid.UUID) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		DELETE FROM chats
 		WHERE id = (
@@ -266,7 +259,7 @@ func (r *ChatRepository) DeletePersonalChat(ctx context.Context, userID1, userID
 		);
 	`
 
-	log.Debug("deleting personal chat from DB", "userID1", userID1, "userID2", userID2)
+	slog.DebugContext(ctx, "deleting personal chat from DB", "userID1", userID1, "userID2", userID2)
 
 	if _, err := r.db.ExecContext(ctx, query, userID1, userID2); err != nil {
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
@@ -276,7 +269,6 @@ func (r *ChatRepository) DeletePersonalChat(ctx context.Context, userID1, userID
 }
 
 func (r *ChatRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error) {
-	log := logger.FromContext(ctx)
 	const query = `
 		SELECT EXISTS(
 			SELECT 1
@@ -285,7 +277,7 @@ func (r *ChatRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool
 		)
 	`
 
-	log.Debug("checking if chat exists in DB", "chatID", chatID)
+	slog.DebugContext(ctx, "checking if chat exists in DB", "chatID", chatID)
 
 	var exists bool
 

@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dispatcher"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/integration/sso"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -38,8 +38,7 @@ func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID)
 }
 
 func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]model.User, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("userService.GetChatUsers", "chatID", chatID)
+	slog.DebugContext(ctx, "userService.GetChatUsers", "chatID", chatID)
 
 	if !s.userInChat(ctx, chatID, requesterID) {
 		return nil, fmt.Errorf(
@@ -54,27 +53,25 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	if err != nil {
 		return nil, fmt.Errorf("get chat %v users: %w", chatID, err)
 	}
-	log.Debug("chat users retrieved")
+	slog.DebugContext(ctx, "chat users retrieved")
 
 	return user, nil
 }
 
 func (s *UserService) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("userService.GetChatUserIDs", "chatID", chatID)
+	slog.DebugContext(ctx, "userService.GetChatUserIDs", "chatID", chatID)
 
 	userIDs, err := s.userRepository.GetChatUserIDs(ctx, chatID)
 	if err != nil {
 		return nil, fmt.Errorf("get chat %v user ids: %w", chatID, err)
 	}
-	log.Debug("chat user ids retrieved")
+	slog.DebugContext(ctx, "chat user ids retrieved")
 
 	return userIDs, nil
 }
 
 func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("userService.AddChatUsers", "chatID", chatID)
+	slog.DebugContext(ctx, "userService.AddChatUsers", "chatID", chatID)
 
 	if !s.userInChat(ctx, chatID, requesterID) {
 		return fmt.Errorf(
@@ -97,21 +94,20 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userID
 		}
 		return fmt.Errorf("add chat %v users: %w", chatID, err)
 	}
-	log.Debug("chat users added")
+	slog.DebugContext(ctx, "chat users added")
 
 	return nil
 }
 
 func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("userService.DeleteChatUser", "chatID", chatID)
+	slog.DebugContext(ctx, "userService.DeleteChatUser", "chatID", chatID)
 
 	if userID == requesterID {
 		err := s.userRepository.DeleteChatUser(ctx, chatID, userID)
 		if err != nil {
 			return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 		}
-		log.Debug("user deleted")
+		slog.DebugContext(ctx, "user deleted")
 
 		return nil
 	}
@@ -151,14 +147,13 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 	if err != nil {
 		return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 	}
-	log.Debug("user deleted")
+	slog.DebugContext(ctx, "user deleted")
 
 	return nil
 }
 
 func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("userService.UpdateUserRole", "chatID", chatID, "chatUserID", userID, "role", newRole)
+	slog.DebugContext(ctx, "userService.UpdateUserRole", "chatID", chatID, "chatUserID", userID, "role", newRole)
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
@@ -197,7 +192,7 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 		}
 		return fmt.Errorf("update user %v role (to %v) in chat %v: %w", userID, newRole, chatID, err)
 	}
-	log.Debug("user role updated")
+	slog.DebugContext(ctx, "user role updated")
 
 	return nil
 }

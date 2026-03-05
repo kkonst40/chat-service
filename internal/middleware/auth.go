@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,7 +12,6 @@ import (
 	"github.com/kkonst40/ichat/internal/config"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/handler"
-	"github.com/kkonst40/ichat/internal/logger"
 )
 
 type UserClaims struct {
@@ -25,25 +25,22 @@ func Auth(cfg *config.Config) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			log := logger.FromContext(ctx)
 
 			token, err := r.Cookie(cfg.JWT.CookieName)
 			if err != nil {
-				log.Error("Token not found", "error", err.Error())
-				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
+				handler.WriteError(ctx, w, fmt.Errorf("%w: token not found: %w", errs.ErrUnauthorized, err))
 				return
 			}
 
-			log.Debug("", "token", token.Value)
+			slog.DebugContext(ctx, "", "token", token.Value)
 
 			claims, err := validateToken(token.Value, cfg)
 			if err != nil {
-				log.Error("Token validation error", "error", err.Error())
-				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
+				handler.WriteError(ctx, w, fmt.Errorf("%w: token validation error: %w", errs.ErrUnauthorized, err))
 				return
 			}
 
-			log.Debug("", "userID", claims.ID)
+			slog.DebugContext(ctx, "", "userID", claims.ID)
 
 			ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
 

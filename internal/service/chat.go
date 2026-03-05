@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,7 +12,6 @@ import (
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/event"
 	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -36,8 +36,7 @@ func NewChatService(
 }
 
 func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("chatService.GetChat", "chatID", chatID)
+	slog.DebugContext(ctx, "chatService.GetChat", "chatID", chatID)
 
 	chat, err := s.chatRepository.GetChat(ctx, chatID)
 	if err != nil {
@@ -46,27 +45,25 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Cha
 		}
 		return nil, fmt.Errorf("get chat %v: %w", chatID, err)
 	}
-	log.Debug("chat retrieved")
+	slog.DebugContext(ctx, "chat retrieved")
 
 	return chat, nil
 }
 
 func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("chatService.GetUserChats")
+	slog.DebugContext(ctx, "chatService.GetUserChats")
 
 	chats, err := s.chatRepository.GetUserChats(ctx, userID, filter)
 	if err != nil {
 		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
 	}
-	log.Debug("chats retrieved")
+	slog.DebugContext(ctx, "chats retrieved")
 
 	return chats, nil
 }
 
 func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uuid.UUID, requesterID uuid.UUID) (*model.Chat, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("chatService.CreateChat")
+	slog.DebugContext(ctx, "chatService.CreateChat")
 
 	newID, err := uuid.NewV7()
 	if err != nil {
@@ -84,13 +81,13 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 	if err != nil {
 		return nil, fmt.Errorf("create chat: %w", err)
 	}
-	log.Debug("chat created")
+	slog.DebugContext(ctx, "chat created")
 
 	err = s.userService.AddChatUsers(ctx, chat.ID, userIDs, requesterID)
 	if err != nil {
 		return nil, fmt.Errorf("add users to new chat: %w", err)
 	}
-	log.Debug("chat users added")
+	slog.DebugContext(ctx, "chat users added")
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.CreateChat,
@@ -104,8 +101,7 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 }
 
 func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.UUID) (*model.Chat, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("chatService.CreatePersonalChat", "user1", user1, "user2", user2)
+	slog.DebugContext(ctx, "chatService.CreatePersonalChat", "user1", user1, "user2", user2)
 
 	newID, err := uuid.NewV7()
 	if err != nil {
@@ -123,7 +119,7 @@ func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.
 	if err != nil {
 		return nil, fmt.Errorf("create personal chat: %w", err)
 	}
-	log.Debug("personal chat created")
+	slog.DebugContext(ctx, "personal chat created")
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.CreateChat,
@@ -137,8 +133,7 @@ func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.
 }
 
 func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("chatService.UpdateChatName", "chatID", chatID)
+	slog.DebugContext(ctx, "chatService.UpdateChatName", "chatID", chatID)
 
 	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Admin) {
 		return fmt.Errorf(
@@ -156,7 +151,7 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 		}
 		return fmt.Errorf("update chat %v name: %w", chatID, err)
 	}
-	log.Debug("chat name updated")
+	slog.DebugContext(ctx, "chat name updated")
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.UpdateChat,
@@ -170,8 +165,7 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 }
 
 func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("chatService.DeleteChat", "chatID", chatID)
+	slog.DebugContext(ctx, "chatService.DeleteChat", "chatID", chatID)
 
 	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Owner) {
 		return fmt.Errorf(
@@ -191,7 +185,7 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	if err != nil {
 		return fmt.Errorf("delete chat %v: %w", chatID, err)
 	}
-	log.Debug("chat deleted")
+	slog.DebugContext(ctx, "chat deleted")
 
 	s.dispatcher.Publish(event.Event{
 		Type:    event.DeleteChat,

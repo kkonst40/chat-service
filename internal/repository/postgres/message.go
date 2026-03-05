@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -25,15 +25,13 @@ func NewMessageRepository(db *sql.DB) *MessageRepository {
 }
 
 func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*model.Message, error) {
-	log := logger.FromContext(ctx)
-
 	const query = `
 		SELECT id, user_id, chat_id, text, created_at
 		FROM messages
 		WHERE id = $1
 	`
 
-	log.Debug("getting message from DB", "msgID", msgID)
+	slog.DebugContext(ctx, "getting message from DB", "msgID", msgID)
 
 	var msg model.Message
 	err := r.db.QueryRowContext(ctx, query, msgID).Scan(
@@ -55,7 +53,6 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 }
 
 func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64) ([]model.Message, error) {
-	log := logger.FromContext(ctx)
 	const queryStart = `
         SELECT id, user_id, chat_id, text, created_at
 		FROM messages
@@ -73,7 +70,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 		LIMIT $3;
 	`
 
-	log.Debug("getting chat messages from DB", "chatID", chatID)
+	slog.DebugContext(ctx, "getting chat messages from DB", "chatID", chatID)
 
 	var rows *sql.Rows
 	var err error
@@ -113,7 +110,6 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 }
 
 func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Message) error {
-	log := logger.FromContext(ctx)
 	const msgQuery = `
 		INSERT INTO messages (id, user_id, chat_id, text, created_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -125,7 +121,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 		WHERE id = $2
 	`
 
-	log.Debug("creating new message in DB", "msgID", msg.ID)
+	slog.DebugContext(ctx, "creating new message in DB", "msgID", msg.ID)
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -180,14 +176,13 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 }
 
 func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Message) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		UPDATE messages
 		SET text = $1
 		WHERE id = $2
 	`
 
-	log.Debug("updating message in DB", "msgID", msg.ID)
+	slog.DebugContext(ctx, "updating message in DB", "msgID", msg.ID)
 
 	res, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
 	if err != nil {
@@ -207,13 +202,12 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 }
 
 func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		DELETE FROM messages
 		WHERE id = $1
 	`
 
-	log.Debug("deleting message in DB", "msgID", msgID)
+	slog.DebugContext(ctx, "deleting message in DB", "msgID", msgID)
 
 	if _, err := r.db.ExecContext(ctx, query, msgID); err != nil {
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)

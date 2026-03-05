@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -9,7 +10,6 @@ import (
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/dto"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -27,17 +27,16 @@ func NewChatHandler(newChatService *service.ChatService, validate *validator.Val
 
 func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := logger.FromContext(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	chat, err := h.chatService.GetChat(ctx, chatID)
 	if err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
@@ -48,13 +47,12 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 		LastMessageAt: chat.LastMessageAt,
 	}
 
-	WriteJSON(w, http.StatusOK, resp, log)
+	WriteJSON(ctx, w, http.StatusOK, resp)
 }
 
 func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	var chats []model.Chat
 	var err error
@@ -69,11 +67,11 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
-	log.Debug("user chats retrieved")
+	slog.DebugContext(ctx, "user chats retrieved")
 
 	resp := dto.GetChatsResponse{
 		Chats: make([]dto.GetChatResponse, 0, len(chats)),
@@ -88,27 +86,26 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	WriteJSON(w, http.StatusOK, resp, log)
+	WriteJSON(ctx, w, http.StatusOK, resp)
 }
 
 func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	var req dto.CreateChatRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
 	chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
 	if err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
-	log.Debug("chat created", "chatID", chat.ID)
+	slog.DebugContext(ctx, "chat created", "chatID", chat.ID)
 	location := fmt.Sprintf("/chats/%s", chat.ID.String())
 
 	w.Header().Set("Location", location)
@@ -118,48 +115,46 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 func (h *ChatHandler) UpdateChatName(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	var req dto.UpdateChatNameRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		WriteError(w, handleValidationErr(err), log)
+		WriteError(ctx, w, handleValidationErr(err))
 		return
 	}
 
 	err = h.chatService.UpdateChatName(ctx, chatID, req.Name, requesterID)
 	if err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
-	log.Debug("chat name updated", "chatID", chatID)
+	slog.DebugContext(ctx, "chat name updated", "chatID", chatID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *ChatHandler) DeleteChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	err = h.chatService.DeleteChat(ctx, chatID, requesterID)
 	if err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
-	log.Debug("chat deleted", "chatID", chatID)
+	slog.DebugContext(ctx, "chat deleted", "chatID", chatID)
 
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/dto"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
 )
 
@@ -35,7 +35,6 @@ const (
 func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	var (
 		from  uuid.UUID
@@ -44,7 +43,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
@@ -64,11 +63,11 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 	messages, err := h.messageService.GetChatMessages(ctx, chatID, from, count, requesterID)
 	if err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
-	log.Debug("chat messages retrieved", "chatID", chatID)
+	slog.DebugContext(ctx, "chat messages retrieved", "chatID", chatID)
 
 	resp := dto.GetMessagesResponse{
 		Messages: make([]dto.GetMessageResponse, 0, len(messages)),
@@ -84,28 +83,27 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	WriteJSON(w, http.StatusOK, resp, log)
+	WriteJSON(ctx, w, http.StatusOK, resp)
 }
 
 func (h *MessageHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	var req dto.CreateMessageRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
 	if _, err := h.messageService.CreateMessage(ctx, requesterID, chatID, req.Text); err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
@@ -115,22 +113,21 @@ func (h *MessageHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	msgID, err := uuid.Parse(r.PathValue("msgId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	var req dto.UpdateMessageRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
 	if err := h.messageService.UpdateMessage(ctx, msgID, req.Text, requesterID); err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 
@@ -140,16 +137,15 @@ func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 func (h *MessageHandler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
-	log := logger.FromContext(ctx)
 
 	msgID, err := uuid.Parse(r.PathValue("msgId"))
 	if err != nil {
-		WriteError(w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest), log)
+		WriteError(ctx, w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	if err := h.messageService.DeleteMessage(ctx, msgID, requesterID); err != nil {
-		WriteError(w, err, log)
+		WriteError(ctx, w, err)
 		return
 	}
 

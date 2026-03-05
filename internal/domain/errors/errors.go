@@ -3,7 +3,6 @@ package errors
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"net/http"
 )
 
@@ -26,7 +25,7 @@ type ErrResp struct {
 	Message string `json:"message"`
 }
 
-func MapError(err error, log *slog.Logger) (int, ErrResp) {
+func MapError(err error) (int, ErrResp) {
 	if err == nil {
 		return 0, ErrResp{}
 	}
@@ -73,8 +72,6 @@ func MapError(err error, log *slog.Logger) (int, ErrResp) {
 		statusCode = http.StatusInternalServerError
 		msg = "Internal server error"
 	}
-
-	log.Error(err.Error())
 
 	return statusCode, ErrResp{msg}
 }
