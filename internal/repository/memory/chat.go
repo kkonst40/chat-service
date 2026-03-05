@@ -66,24 +66,6 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 	return chats, nil
 }
 
-func (r *ChatRepository) GetUserPersonalChats(ctx context.Context, userID uuid.UUID) ([]model.Chat, error) {
-	r.db.mu.RLock()
-	defer r.db.mu.RUnlock()
-
-	chats := make([]model.Chat, 0)
-	for _, user := range r.db.users {
-		if user.ID == userID && !r.db.chats[user.ChatID].IsGroup {
-			chats = append(chats, *r.db.chats[user.ChatID])
-		}
-	}
-
-	sort.Slice(chats, func(i, j int) bool {
-		return chats[i].LastMessageAt.After(chats[j].LastMessageAt)
-	})
-
-	return chats, nil
-}
-
 func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
