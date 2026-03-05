@@ -77,6 +77,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 		resp.Messages = append(resp.Messages, dto.GetMessageResponse{
 			ID:        message.ID,
 			UserID:    message.UserID,
+			UserName:  message.UserName,
 			ChatID:    message.ChatID,
 			Text:      message.Text,
 			CreatedAt: message.CreatedAt,

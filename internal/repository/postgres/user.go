@@ -119,6 +119,42 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 	return users, nil
 }
 
+func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	const query = `
+		SELECT c.id, u2.id
+		FROM users u1
+		JOIN chats c ON u1.chat_id = c.id
+		JOIN users u2 ON u1.chat_id = u2.chat_id
+		WHERE u1.id = $1
+			AND c.is_group = FALSE
+			AND u2.id != $1;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	chatsInterlocutors := make(map[uuid.UUID]uuid.UUID)
+	for rows.Next() {
+		var chatID uuid.UUID
+		var interlocutorID uuid.UUID
+		if err := rows.Scan(&chatID, &interlocutorID); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+
+		chatsInterlocutors[chatID] = interlocutorID
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+
+	return chatsInterlocutors, nil
+
+}
+
 func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error {
 	if len(userIDs) == 0 {
 		return nil

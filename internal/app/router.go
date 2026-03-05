@@ -19,7 +19,8 @@ func NewRouter(
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /chats", chatHandler.GetChats)
-	router.HandleFunc("POST /chats", chatHandler.CreateChat)
+	router.HandleFunc("POST /chats/private", chatHandler.CreatePersonalChat)
+	router.HandleFunc("POST /chats/group", chatHandler.CreateGroupChat)
 	router.HandleFunc("GET /chats/{chatId}", chatHandler.GetChat)
 	router.HandleFunc("PUT /chats/{chatId}", chatHandler.UpdateChatName)
 	router.HandleFunc("DELETE /chats/{chatId}", chatHandler.DeleteChat)

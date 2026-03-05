@@ -17,9 +17,13 @@ type GetChatsResponse struct {
 	Chats []GetChatResponse `json:"chats"`
 }
 
-type CreateChatRequest struct {
+type CreateGroupChatRequest struct {
 	Name    string      `json:"name" validate:"required"`
 	UserIDs []uuid.UUID `json:"userIds" validate:"required"`
+}
+
+type CreatePersonalChatRequest struct {
+	UserID uuid.UUID `json:"userId" validate:"required"`
 }
 
 type UpdateChatNameRequest struct {

@@ -59,6 +59,31 @@ func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter
 	}
 	slog.DebugContext(ctx, "chats retrieved")
 
+	if filter == model.GroupChats {
+		return chats, nil
+	}
+
+	chatsInterlocutors, err := s.userService.getPersonalChatsInterlocutors(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
+	}
+
+	userIDs := make([]uuid.UUID, 0, len(chatsInterlocutors))
+	for _, interlocutorID := range chatsInterlocutors {
+		userIDs = append(userIDs, interlocutorID)
+	}
+
+	logins, err := s.userService.getUserLogins(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
+	}
+
+	for i := range chats {
+		if !chats[i].IsGroup {
+			chats[i].Name = logins[chatsInterlocutors[chats[i].ID]]
+		}
+	}
+
 	return chats, nil
 }
 

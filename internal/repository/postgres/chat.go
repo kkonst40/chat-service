@@ -163,7 +163,7 @@ func (r *ChatRepository) CreatePersonalChat(ctx context.Context, chat *model.Cha
 	`
 	const userQuery = `
 		INSERT INTO users (id, chat_id, role)
-		VALUES ($1, $2, $3) ($4, $5, $6)
+		VALUES ($1, $2, $3), ($4, $5, $6)
 	`
 
 	tx, err := r.db.BeginTx(ctx, nil)

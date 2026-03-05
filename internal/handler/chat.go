@@ -89,17 +89,40 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(ctx, w, http.StatusOK, resp)
 }
 
-func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
+func (h *ChatHandler) CreateGroupChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := getUserID(ctx)
 
-	var req dto.CreateChatRequest
+	var req dto.CreateGroupChatRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
 		WriteError(ctx, w, err)
 		return
 	}
 
 	chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
+	if err != nil {
+		WriteError(ctx, w, err)
+		return
+	}
+
+	slog.DebugContext(ctx, "chat created", "chatID", chat.ID)
+	location := fmt.Sprintf("/chats/%s", chat.ID.String())
+
+	w.Header().Set("Location", location)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *ChatHandler) CreatePersonalChat(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	requesterID := getUserID(ctx)
+
+	var req dto.CreatePersonalChatRequest
+	if err := bindJSON(r, &req, h.validate); err != nil {
+		WriteError(ctx, w, err)
+		return
+	}
+
+	chat, err := h.chatService.CreatePersonalChat(ctx, requesterID, req.UserID)
 	if err != nil {
 		WriteError(ctx, w, err)
 		return

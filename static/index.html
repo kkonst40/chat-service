@@ -268,6 +268,7 @@
                 data.messages.reverse().forEach(msg => appendMessage({
                     msg_id: msg.id,
                     user_id: msg.userId,
+                    user_name: msg.userName,
                     text: msg.text
                 }));
             }
@@ -313,12 +314,14 @@
             const div = document.createElement('div');
             div.className = 'message';
             div.id = `msg-${payload.msg_id}`;
+            const displayName = payload.userName || payload.user_name || payload.user_id;
+            //const displayName = payload.userName || payload.user_name
             div.innerHTML = `
             <div class="msg-actions">
                 <span class="btn-edit" onclick="enterEditMode('${payload.msg_id}', '${payload.text.replace(/'/g, "\\'")}')">ред.</span>
                 <span class="btn-del" onclick="deleteMessage('${payload.msg_id}')">удалить</span>
             </div>
-            <strong>${payload.user_id.substring(0, 12)}:</strong> 
+            <strong>${displayName}:</strong> 
             <span class="text-content">${payload.text}</span>
         `;
             messagesDiv.appendChild(div);

@@ -66,6 +66,21 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	}
 	slog.DebugContext(ctx, "messages retrieved")
 
+	userIDs := make([]uuid.UUID, 0, len(messages))
+	for i := range messages {
+		userIDs = append(userIDs, messages[i].UserID)
+	}
+
+	uniqueUserIDs := unique(userIDs)
+	logins, err := s.userService.getUserLogins(ctx, uniqueUserIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get user logins: %w", err)
+	}
+
+	for i := range messages {
+		messages[i].UserName = logins[messages[i].UserID]
+	}
+
 	return messages, nil
 }
 

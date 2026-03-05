@@ -17,13 +17,13 @@ import (
 type UserService struct {
 	userRepository repository.UserRepository
 	dispatcher     *dispatcher.Dispatcher
-	ssoClient      *sso.SSOClient
+	ssoClient      *sso.SSOService
 }
 
 func NewUserService(
 	userRepository repository.UserRepository,
 	dispatcher *dispatcher.Dispatcher,
-	ssoClient *sso.SSOClient,
+	ssoClient *sso.SSOService,
 ) *UserService {
 	return &UserService{
 		userRepository: userRepository,
@@ -219,6 +219,42 @@ func (s *UserService) userInChat(ctx context.Context, chatID, userID uuid.UUID) 
 	return result
 }
 
+func (s *UserService) getPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	chatsInterlocutors, err := s.userRepository.GetPersonalChatsInterlocutors(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get personal chats interlocutors IDs of user %v: %w", userID, err)
+	}
+
+	return chatsInterlocutors, nil
+}
+
 func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
-	return s.ssoClient.ExistMany(ctx, userIDs)
+	IDs, err := s.ssoClient.ExistMany(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"%w: sso service (ExistMany): %w",
+			errs.ErrExternalService,
+			err,
+		)
+	}
+
+	return IDs, nil
+}
+
+func (s *UserService) getUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
+	userInfos, err := s.ssoClient.GetUsersLogins(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"%w: sso service (GetUsersLogins): %w",
+			errs.ErrExternalService,
+			err,
+		)
+	}
+
+	result := make(map[uuid.UUID]string, len(userIDs))
+	for _, userInfo := range userInfos {
+		result[userInfo.ID] = userInfo.Login
+	}
+
+	return result, nil
 }

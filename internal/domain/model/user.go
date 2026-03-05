@@ -8,6 +8,11 @@ type User struct {
 	Role
 }
 
+type UserInfo struct {
+	ID    uuid.UUID
+	Login string
+}
+
 type Role string
 
 const (
