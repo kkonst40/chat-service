@@ -7,7 +7,16 @@ import (
 )
 
 type Chat struct {
-	ID            uuid.UUID `json:"id"`
-	Name          string    `json:"name"`
-	LastMessageAt time.Time `json:"lastMessageAt"`
+	ID            uuid.UUID
+	Name          string
+	IsGroup       bool
+	LastMessageAt time.Time
 }
+
+type ChatFilter string
+
+const (
+	AllChats      = ChatFilter("all")
+	PersonalChats = ChatFilter("personal")
+	GroupChats    = ChatFilter("group")
+)

@@ -85,7 +85,7 @@ func New(cfg *config.Config) (*App, error) {
 		cfg,
 	)
 
-	httpServer := &http.Server{
+	server := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
 	}
@@ -93,7 +93,7 @@ func New(cfg *config.Config) (*App, error) {
 	slog.Info("HTTP server is initialized")
 
 	return &App{
-		server: httpServer,
+		server: server,
 		db:     db,
 	}, nil
 }

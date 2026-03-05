@@ -58,6 +58,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 	log := logger.FromContext(ctx)
 	const queryStart = `
         SELECT id, user_id, chat_id, text, created_at
+		FROM messages
         WHERE chat_id = $1
         ORDER BY id DESC
         LIMIT $2

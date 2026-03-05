@@ -19,6 +19,27 @@
             background: #f9f9f9;
         }
 
+        #chat-filters {
+            display: flex;
+            gap: 4px;
+            padding: 0 10px 10px 10px;
+        }
+
+        .filter-btn {
+            flex: 1;
+            padding: 6px 4px;
+            font-size: 0.85em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: #d1e7ff;
+            border-color: #7cb1ff;
+        }
+
         #chat-window {
             flex-grow: 1;
             display: flex;
@@ -100,6 +121,11 @@
 
     <div id="sidebar">
         <h3 style="padding-left: 10px;">Чаты</h3>
+        <div id="chat-filters">
+            <button class="filter-btn active" data-filter="all" onclick="setChatFilter('all')">Все</button>
+            <button class="filter-btn" data-filter="personal" onclick="setChatFilter('personal')">Личные</button>
+            <button class="filter-btn" data-filter="group" onclick="setChatFilter('group')">Группы</button>
+        </div>
         <div id="chats-list"></div>
     </div>
 
@@ -117,6 +143,7 @@
         let editingMessageId = null;
         let socket = null;
         let allChats = [];
+        let currentChatFilter = 'all';
 
         document.addEventListener('DOMContentLoaded', () => {
             loadChats();
@@ -175,11 +202,31 @@
         }
 
         async function loadChats() {
-            const data = await apiRequest('/chats');
+            let url = '/chats';
+            if (currentChatFilter === 'personal' || currentChatFilter === 'group') {
+                url = `/chats?filter=${currentChatFilter}`;
+            }
+            const data = await apiRequest(url);
             if (data && data.chats) {
                 allChats = data.chats;
                 renderChats();
             }
+        }
+
+        function setChatFilter(filter) {
+            if (!['all', 'personal', 'group'].includes(filter)) return;
+            currentChatFilter = filter;
+
+            const buttons = document.querySelectorAll('#chat-filters .filter-btn');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('data-filter') === filter) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            loadChats();
         }
 
         function renderChats() {

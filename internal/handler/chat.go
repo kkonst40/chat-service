@@ -7,6 +7,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/service"
@@ -41,8 +42,10 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := dto.GetChatResponse{
-		ID:   chat.ID,
-		Name: chat.Name,
+		ID:            chat.ID,
+		Name:          chat.Name,
+		IsGroup:       chat.IsGroup,
+		LastMessageAt: chat.LastMessageAt,
 	}
 
 	WriteJSON(w, http.StatusOK, resp, log)
@@ -53,7 +56,18 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 	requesterID := getUserID(ctx)
 	log := logger.FromContext(ctx)
 
-	chats, err := h.chatService.GetUserChats(ctx, requesterID)
+	var chats []model.Chat
+	var err error
+
+	switch r.URL.Query().Get("filter") {
+	case "":
+		chats, err = h.chatService.GetUserChats(ctx, requesterID, model.AllChats)
+	case "personal":
+		chats, err = h.chatService.GetUserChats(ctx, requesterID, model.PersonalChats)
+	case "group":
+		chats, err = h.chatService.GetUserChats(ctx, requesterID, model.GroupChats)
+	}
+
 	if err != nil {
 		WriteError(w, err, log)
 		return
@@ -69,6 +83,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 		resp.Chats = append(resp.Chats, dto.GetChatResponse{
 			ID:            chat.ID,
 			Name:          chat.Name,
+			IsGroup:       chat.IsGroup,
 			LastMessageAt: chat.LastMessageAt,
 		})
 	}
