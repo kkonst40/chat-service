@@ -48,12 +48,13 @@ func Load() (*Config, error) {
 func loadConfigEnv() (*Config, error) {
 	var err error
 	getEnv := func(key string) string {
-		if err != nil {
-			return ""
-		}
 		val, ok := os.LookupEnv(key)
 		if !ok {
-			err = fmt.Errorf("missing environment variable: %v", key)
+			if err == nil {
+				err = fmt.Errorf("missing environment variables: %s", key)
+			} else {
+				err = fmt.Errorf("%w, %s", err, key)
+			}
 			return ""
 		}
 		return val
