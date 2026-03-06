@@ -71,8 +71,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 		userIDs = append(userIDs, messages[i].UserID)
 	}
 
-	uniqueUserIDs := unique(userIDs)
-	logins, err := s.userService.getUserLogins(ctx, uniqueUserIDs)
+	logins, err := s.userService.getUserLogins(ctx, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get user logins: %w", err)
 	}
