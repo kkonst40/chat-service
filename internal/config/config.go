@@ -32,12 +32,13 @@ type RedisConfig struct {
 }
 
 type Config struct {
-	Env        string      `json:"env"`
-	Port       string      `json:"port"`
-	SSOAddress string      `json:"ssoAddress"`
-	JWT        JWTConfig   `json:"jwt"`
-	DB         DBConfig    `json:"db"`
-	Redis      RedisConfig `json:"redis"`
+	Env           string      `json:"env"`
+	Port          string      `json:"port"`
+	SSOAddress    string      `json:"ssoAddress"`
+	JWT           JWTConfig   `json:"jwt"`
+	DB            DBConfig    `json:"db"`
+	Redis         RedisConfig `json:"redis"`
+	LoginCacheTTL int         `json:"loginCacheTTL"`
 }
 
 func Load() (*Config, error) {
@@ -122,6 +123,7 @@ func loadConfigEnv() (*Config, error) {
 			Password: getEnvString("REDIS_PASSWORD"),
 			DB:       getEnvInt("REDIS_DB"),
 		},
+		LoginCacheTTL: getEnvInt("LOGIN_CACHE_TTL"),
 	}
 	if errMissing != nil {
 		errResult = errMissing

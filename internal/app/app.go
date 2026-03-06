@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kkonst40/ichat/internal/cache"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/dispatcher"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
@@ -35,11 +36,13 @@ func New(cfg *config.Config) (*App, error) {
 	}
 	slog.Info("Successful connection to the database")
 
-	redis, err := SetupRedis(cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.Password, cfg.Redis.DB)
+	redisClient, err := SetupRedis(cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.Password, cfg.Redis.DB)
 	if err != nil {
 		return nil, err
 	}
 	slog.Info("Successful connection to the Redis")
+
+	userLoginCache := cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTL)*time.Hour)
 
 	var (
 		userRepo    = postgres.NewUserRepository(db)
@@ -69,7 +72,7 @@ func New(cfg *config.Config) (*App, error) {
 		wsHub      = hub.NewHub()
 		dispatcher = dispatcher.New(wsHub, userRepo)
 
-		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, redis)
+		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, userLoginCache)
 		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
 		messageService = service.NewMessageService(messageRepo, chatService, userService, dispatcher, 4096)
 	)
