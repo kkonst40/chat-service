@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dispatcher"
@@ -12,23 +13,27 @@ import (
 	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/redis/go-redis/v9"
 )
 
 type UserService struct {
 	userRepository repository.UserRepository
 	dispatcher     *dispatcher.Dispatcher
 	ssoClient      *sso.SSOService
+	cache          *redis.Client
 }
 
 func NewUserService(
 	userRepository repository.UserRepository,
 	dispatcher *dispatcher.Dispatcher,
 	ssoClient *sso.SSOService,
+	cache *redis.Client,
 ) *UserService {
 	return &UserService{
 		userRepository: userRepository,
 		dispatcher:     dispatcher,
 		ssoClient:      ssoClient,
+		cache:          cache,
 	}
 }
 
@@ -242,19 +247,59 @@ func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uui
 }
 
 func (s *UserService) getUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
-	userInfos, err := s.ssoClient.GetUsersLogins(ctx, userIDs)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"%w: sso service (GetUsersLogins): %w",
-			errs.ErrExternalService,
-			err,
-		)
-	}
-
 	result := make(map[uuid.UUID]string, len(userIDs))
-	for _, userInfo := range userInfos {
-		result[userInfo.ID] = userInfo.Login
+
+	if s.cache == nil {
+		userInfos, err := s.ssoClient.GetUsersLogins(ctx, userIDs)
+		if err != nil {
+			return nil, fmt.Errorf("%w: sso service (GetUsersLogins): %w", errs.ErrExternalService, err)
+		}
+		for _, userInfo := range userInfos {
+			result[userInfo.ID] = userInfo.Login
+		}
+		return result, nil
 	}
 
+	keys := make([]string, len(userIDs))
+	for i, id := range userIDs {
+		keys[i] = fmt.Sprintf("user_login:%s", id.String())
+	}
+
+	vals, err := s.cache.MGet(ctx, keys...).Result()
+	if err != nil {
+		slog.ErrorContext(ctx, "redis MGet error", "error", err)
+		vals = make([]any, len(userIDs))
+	}
+	missingIDs := make([]uuid.UUID, 0)
+
+	for i, v := range vals {
+		id := userIDs[i]
+		if v == nil {
+			missingIDs = append(missingIDs, id)
+			continue
+		}
+		if login, ok := v.(string); ok && login != "" {
+			result[id] = login
+		} else {
+			missingIDs = append(missingIDs, id)
+		}
+	}
+
+	if len(missingIDs) > 0 {
+		userInfos, err := s.ssoClient.GetUsersLogins(ctx, missingIDs)
+		if err != nil {
+			return nil, fmt.Errorf("%w: sso service (GetUsersLogins): %w", errs.ErrExternalService, err)
+		}
+		pipe := s.cache.Pipeline()
+		const ttl = time.Hour
+		for _, userInfo := range userInfos {
+			result[userInfo.ID] = userInfo.Login
+			key := fmt.Sprintf("user_login:%s", userInfo.ID.String())
+			pipe.Set(ctx, key, userInfo.Login, ttl)
+		}
+		if _, err := pipe.Exec(ctx); err != nil {
+			slog.ErrorContext(ctx, "redis pipeline Set error", "error", err)
+		}
+	}
 	return result, nil
 }
