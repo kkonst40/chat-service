@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dispatcher"
@@ -14,21 +15,29 @@ import (
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
+type UserLoginCache interface {
+	GetUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
+	SetUserLogins(ctx context.Context, logins map[uuid.UUID]string) error
+}
+
 type UserService struct {
 	userRepository repository.UserRepository
 	dispatcher     *dispatcher.Dispatcher
 	ssoClient      *sso.SSOService
+	loginCache     UserLoginCache
 }
 
 func NewUserService(
 	userRepository repository.UserRepository,
 	dispatcher *dispatcher.Dispatcher,
 	ssoClient *sso.SSOService,
+	loginCache UserLoginCache,
 ) *UserService {
 	return &UserService{
 		userRepository: userRepository,
 		dispatcher:     dispatcher,
 		ssoClient:      ssoClient,
+		loginCache:     loginCache,
 	}
 }
 
@@ -242,18 +251,56 @@ func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uui
 }
 
 func (s *UserService) getUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
-	userInfos, err := s.ssoClient.GetUsersLogins(ctx, userIDs)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"%w: sso service (GetUsersLogins): %w",
-			errs.ErrExternalService,
-			err,
-		)
+	userIDs = unique(userIDs)
+	result := make(map[uuid.UUID]string, len(userIDs))
+
+	if s.loginCache == nil {
+		userInfos, err := s.ssoClient.GetUsersLogins(ctx, userIDs)
+		if err != nil {
+			return nil, fmt.Errorf("%w: sso service (GetUsersLogins): %w", errs.ErrExternalService, err)
+		}
+
+		for _, userInfo := range userInfos {
+			result[userInfo.ID] = userInfo.Login
+		}
+
+		return result, nil
 	}
 
-	result := make(map[uuid.UUID]string, len(userIDs))
+	cachedLogins, err := s.loginCache.GetUserLogins(ctx, userIDs)
+	if err != nil {
+		slog.ErrorContext(ctx, "user login cache GetUserLogins error", "error", err)
+		cachedLogins = map[uuid.UUID]string{}
+	}
+
+	slog.DebugContext(ctx, "got logins from cache")
+
+	maps.Copy(result, cachedLogins)
+
+	missingIDs := make([]uuid.UUID, 0, len(userIDs))
+	for _, id := range userIDs {
+		if _, ok := cachedLogins[id]; !ok {
+			missingIDs = append(missingIDs, id)
+		}
+	}
+
+	if len(missingIDs) == 0 {
+		return result, nil
+	}
+
+	userInfos, err := s.ssoClient.GetUsersLogins(ctx, missingIDs)
+	if err != nil {
+		return nil, fmt.Errorf("%w: sso service (GetUsersLogins): %w", errs.ErrExternalService, err)
+	}
+
+	toCache := make(map[uuid.UUID]string, len(userInfos))
 	for _, userInfo := range userInfos {
 		result[userInfo.ID] = userInfo.Login
+		toCache[userInfo.ID] = userInfo.Login
+	}
+
+	if err := s.loginCache.SetUserLogins(ctx, toCache); err != nil {
+		slog.ErrorContext(ctx, "user login cache SetUserLogins error", "error", err)
 	}
 
 	return result, nil

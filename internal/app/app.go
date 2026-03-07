@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kkonst40/ichat/internal/cache"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/dispatcher"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
@@ -16,6 +17,7 @@ import (
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/repository/postgres"
 	"github.com/kkonst40/ichat/internal/service"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -28,11 +30,19 @@ type App struct {
 }
 
 func New(cfg *config.Config) (*App, error) {
-	db, err := SetupDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.DBName)
+	db, err := SetupDB(cfg.DB.User, cfg.DB.Password, cfg.DB.Host, cfg.DB.Port, cfg.DB.DBName)
 	if err != nil {
 		return nil, err
 	}
 	slog.Info("Successful connection to the database")
+
+	redisClient, err := SetupRedis(cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.Password, cfg.Redis.DB)
+	if err != nil {
+		return nil, err
+	}
+	slog.Info("Successful connection to the Redis")
+
+	userLoginCache := cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTL)*time.Hour)
 
 	var (
 		userRepo    = postgres.NewUserRepository(db)
@@ -62,7 +72,7 @@ func New(cfg *config.Config) (*App, error) {
 		wsHub      = hub.NewHub()
 		dispatcher = dispatcher.New(wsHub, userRepo)
 
-		userService    = service.NewUserService(userRepo, dispatcher, ssoClient)
+		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, userLoginCache)
 		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
 		messageService = service.NewMessageService(messageRepo, chatService, userService, dispatcher, 4096)
 	)
@@ -115,13 +125,13 @@ func (a *App) Shutdown(ctx context.Context) {
 	}
 }
 
-func SetupDB(user, pwd, host, dbName string) (*sql.DB, error) {
-	dbUrl := fmt.Sprintf("postgres://%v:%v@%v/%v",
-		user, pwd, host, dbName)
+func SetupDB(user, pwd, host, port, dbName string) (*sql.DB, error) {
+	dbUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		user, pwd, host, port, dbName)
 
 	db, err := sql.Open("pgx", dbUrl)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating db object: %v", err)
+		return nil, fmt.Errorf("error creating db object: %w", err)
 	}
 
 	db.SetMaxOpenConns(25)
@@ -129,8 +139,21 @@ func SetupDB(user, pwd, host, dbName string) (*sql.DB, error) {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("Failed to connect to the database: %v", err)
+		return nil, fmt.Errorf("failed to connect to the database: %w", err)
 	}
 
 	return db, nil
+}
+
+func SetupRedis(host, port, password string, db int) (*redis.Client, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", host, port),
+		Password: password,
+		DB:       db,
+	})
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to the Redis: %w", err)
+	}
+
+	return client, nil
 }

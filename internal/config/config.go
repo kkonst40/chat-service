@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 )
 
 type DBConfig struct {
 	Host     string `json:"host"`
+	Port     string `json:"port"`
 	User     string `json:"user"`
 	Password string `json:"password"`
 	DBName   string `json:"dbname"`
@@ -22,12 +24,21 @@ type JWTConfig struct {
 	CookieName string `json:"cookieName"`
 }
 
+type RedisConfig struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Password string `json:"password"`
+	DB       int    `json:"db"`
+}
+
 type Config struct {
-	Env        string    `json:"env"`
-	Port       string    `json:"port"`
-	SSOAddress string    `json:"ssoAddress"`
-	JWT        JWTConfig `json:"jwt"`
-	DB         DBConfig  `json:"db"`
+	Env           string      `json:"env"`
+	Port          string      `json:"port"`
+	SSOAddress    string      `json:"ssoAddress"`
+	JWT           JWTConfig   `json:"jwt"`
+	DB            DBConfig    `json:"db"`
+	Redis         RedisConfig `json:"redis"`
+	LoginCacheTTL int         `json:"loginCacheTTL"`
 }
 
 func Load() (*Config, error) {
@@ -46,40 +57,88 @@ func Load() (*Config, error) {
 }
 
 func loadConfigEnv() (*Config, error) {
-	var err error
-	getEnv := func(key string) string {
+	var (
+		errMissing error
+		errNotInt  error
+		errResult  error
+	)
+
+	getEnvString := func(key string) string {
 		val, ok := os.LookupEnv(key)
 		if !ok {
-			if err == nil {
-				err = fmt.Errorf("missing environment variables: %s", key)
+			if errMissing == nil {
+				errMissing = fmt.Errorf("missing environment variables: %s", key)
 			} else {
-				err = fmt.Errorf("%w, %s", err, key)
+				errMissing = fmt.Errorf("%w, %s", errMissing, key)
 			}
 			return ""
 		}
 		return val
 	}
 
-	cfg := &Config{
-		Env:        getEnv("ENV"),
-		Port:       getEnv("PORT"),
-		SSOAddress: getEnv("SSO_URL"),
-		JWT: JWTConfig{
-			SecretKey:  getEnv("JWT_SECRET"),
-			Issuer:     getEnv("JWT_ISSUER"),
-			Audience:   getEnv("JWT_AUDIENCE"),
-			CookieName: getEnv("JWT_COOKIE"),
-		},
-		DB: DBConfig{
-			Host:     getEnv("DB_HOST"),
-			User:     getEnv("DB_USER"),
-			Password: getEnv("DB_PASSWORD"),
-			DBName:   getEnv("DB_NAME"),
-		},
+	getEnvInt := func(key string) int {
+		val, ok := os.LookupEnv(key)
+		if !ok {
+			if errMissing == nil {
+				errMissing = fmt.Errorf("missing environment variables: %s", key)
+			} else {
+				errMissing = fmt.Errorf("%w, %s", errMissing, key)
+			}
+			return 0
+		}
+
+		valInt, err := strconv.Atoi(val)
+		if err != nil {
+			if errNotInt == nil {
+				errNotInt = fmt.Errorf("environment variables must be integer: %s", val)
+			} else {
+				errNotInt = fmt.Errorf("%w, %s", errNotInt, val)
+			}
+			return 0
+		}
+
+		return valInt
 	}
 
-	if err != nil {
-		return nil, err
+	cfg := &Config{
+		Env:        getEnvString("ENV"),
+		Port:       getEnvString("PORT"),
+		SSOAddress: getEnvString("SSO_URL"),
+		JWT: JWTConfig{
+			SecretKey:  getEnvString("JWT_SECRET"),
+			Issuer:     getEnvString("JWT_ISSUER"),
+			Audience:   getEnvString("JWT_AUDIENCE"),
+			CookieName: getEnvString("JWT_COOKIE"),
+		},
+		DB: DBConfig{
+			Host:     getEnvString("DB_HOST"),
+			Port:     getEnvString("DB_PORT"),
+			User:     getEnvString("DB_USER"),
+			Password: getEnvString("DB_PASSWORD"),
+			DBName:   getEnvString("DB_NAME"),
+		},
+		Redis: RedisConfig{
+			Host:     getEnvString("REDIS_HOST"),
+			Port:     getEnvString("REDIS_PORT"),
+			Password: getEnvString("REDIS_PASSWORD"),
+			DB:       getEnvInt("REDIS_DB"),
+		},
+		LoginCacheTTL: getEnvInt("LOGIN_CACHE_TTL"),
+	}
+	if errMissing != nil {
+		errResult = errMissing
+	}
+
+	if errNotInt != nil {
+		if errResult == nil {
+			errResult = errNotInt
+		} else {
+			errResult = fmt.Errorf("%w; %w", errResult, errNotInt)
+		}
+	}
+
+	if errResult != nil {
+		return nil, errResult
 	}
 
 	return cfg, nil
