@@ -2,7 +2,6 @@ package sso
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/domain/model"
@@ -25,10 +24,7 @@ func (c *SSOService) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid
 		idsStrings[i] = id.String()
 	}
 
-	ssoCtx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	resp, err := c.client.Exist(ssoCtx, &pb.ExistRequest{
+	resp, err := c.client.Exist(ctx, &pb.ExistRequest{
 		Ids: idsStrings,
 	})
 
@@ -54,10 +50,7 @@ func (c *SSOService) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([
 		idsStrings[i] = id.String()
 	}
 
-	ssoCtx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	resp, err := c.client.GetUsersLogins(ssoCtx, &pb.GetUsersLoginsRequest{
+	resp, err := c.client.GetUsersLogins(ctx, &pb.GetUsersLoginsRequest{
 		Ids: idsStrings,
 	})
 
@@ -82,10 +75,7 @@ func (c *SSOService) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([
 }
 
 func (c *SSOService) GetUsersIDs(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
-	ssoCtx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	resp, err := c.client.GetUsersIDs(ssoCtx, &pb.GetUsersIDsRequest{
+	resp, err := c.client.GetUsersIDs(ctx, &pb.GetUsersIDsRequest{
 		Logins: userLogins,
 	})
 
