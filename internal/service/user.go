@@ -91,13 +91,12 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 		)
 	}
 
-	userIDs := make([]uuid.UUID, 0, len(userNames))
-
 	userIDsMap, err := s.getUserIDs(ctx, userNames)
 	if err != nil {
 		return fmt.Errorf("get user IDs before add to chat %v: %w", chatID, err)
 	}
 
+	userIDs := make([]uuid.UUID, 0, len(userIDsMap))
 	for _, userName := range userNames {
 		userID, ok := userIDsMap[userName]
 		if ok {

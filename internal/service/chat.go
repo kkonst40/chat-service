@@ -102,7 +102,20 @@ func (s *ChatService) CreateGroupChat(ctx context.Context, name string, userName
 		LastMessageAt: time.Now(),
 	}
 
-	err = s.chatRepository.CreateChat(ctx, chat, requesterID)
+	userIDsMap, err := s.userService.getUserIDs(ctx, userNames)
+	if err != nil {
+		return nil, fmt.Errorf("get user IDs before create chat: %w", err)
+	}
+
+	userIDs := make([]uuid.UUID, 0, len(userIDsMap))
+	for _, userName := range userNames {
+		userID, ok := userIDsMap[userName]
+		if ok {
+			userIDs = append(userIDs, userID)
+		}
+	}
+
+	err = s.chatRepository.CreateGroupChat(ctx, chat, requesterID, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("create chat: %w", err)
 	}

@@ -66,7 +66,7 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 	return chats, nil
 }
 
-func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
+func (r *ChatRepository) CreateGroupChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID, userIDs []uuid.UUID) error {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
@@ -79,6 +79,14 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 		ID:     creatorID,
 		ChatID: chat.ID,
 		Role:   model.Owner,
+	}
+
+	for _, userID := range userIDs {
+		r.db.users[key{ChatID: chat.ID, UserID: userID}] = &model.User{
+			ID:     userID,
+			ChatID: chat.ID,
+			Role:   model.Common,
+		}
 	}
 
 	return nil

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
@@ -110,15 +111,33 @@ func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, fil
 	return chats, nil
 }
 
-func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID) error {
+func (r *ChatRepository) CreateGroupChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID, userIDs []uuid.UUID) error {
 	const chatQuery = `
 		INSERT INTO chats (id, name, is_group, last_message_at)
 		VALUES ($1, $2, $3, $4)
 	`
-	const userQuery = `
+	const creatorQuery = `
 		INSERT INTO users (id, chat_id, role)
 		VALUES ($1, $2, $3)
 	`
+
+	var userQueryBuilder strings.Builder
+	args := make([]any, 0, len(userIDs)*3)
+	if len(userIDs) > 0 {
+		userQueryBuilder.WriteString("INSERT INTO users (id, chat_id, role) VALUES ")
+
+		for i, userID := range userIDs {
+			if i > 0 {
+				userQueryBuilder.WriteString(", ")
+			}
+
+			n := i * 3
+			fmt.Fprintf(&userQueryBuilder, "($%d, $%d, $%d)", n+1, n+2, n+3)
+			args = append(args, userID, chat.ID, model.Common)
+		}
+
+		userQueryBuilder.WriteString(" ON CONFLICT (id, chat_id) DO NOTHING")
+	}
 
 	slog.DebugContext(ctx, "creating new chat with creator user in DB", "chatID", chat.ID, "userID", creatorID)
 
@@ -141,12 +160,18 @@ func (r *ChatRepository) CreateChat(ctx context.Context, chat *model.Chat, creat
 
 	if _, err = tx.ExecContext(
 		ctx,
-		userQuery,
+		creatorQuery,
 		creatorID,
 		chat.ID,
 		model.Owner,
 	); err != nil {
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+
+	if len(userIDs) > 0 {
+		if _, err = tx.ExecContext(ctx, userQueryBuilder.String(), args...); err != nil {
+			return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
