@@ -99,7 +99,7 @@ func (h *ChatHandler) CreateGroupChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chat, err := h.chatService.CreateChat(ctx, req.Name, req.UserIDs, requesterID)
+	chat, err := h.chatService.CreateGroupChat(ctx, req.Name, req.UserNames, requesterID)
 	if err != nil {
 		WriteError(ctx, w, err)
 		return
@@ -122,7 +122,7 @@ func (h *ChatHandler) CreatePersonalChat(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	chat, err := h.chatService.CreatePersonalChat(ctx, requesterID, req.UserID)
+	chat, err := h.chatService.CreatePersonalChat(ctx, requesterID, req.UserName)
 	if err != nil {
 		WriteError(ctx, w, err)
 		return

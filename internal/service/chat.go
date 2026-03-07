@@ -87,7 +87,7 @@ func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter
 	return chats, nil
 }
 
-func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uuid.UUID, requesterID uuid.UUID) (*model.Chat, error) {
+func (s *ChatService) CreateGroupChat(ctx context.Context, name string, userNames []string, requesterID uuid.UUID) (*model.Chat, error) {
 	slog.DebugContext(ctx, "chatService.CreateChat")
 
 	newID, err := uuid.NewV7()
@@ -108,7 +108,7 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 	}
 	slog.DebugContext(ctx, "chat created")
 
-	err = s.userService.AddChatUsers(ctx, chat.ID, userIDs, requesterID)
+	err = s.userService.AddChatUsers(ctx, chat.ID, userNames, requesterID)
 	if err != nil {
 		return nil, fmt.Errorf("add users to new chat: %w", err)
 	}
@@ -125,8 +125,8 @@ func (s *ChatService) CreateChat(ctx context.Context, name string, userIDs []uui
 	return chat, nil
 }
 
-func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.UUID) (*model.Chat, error) {
-	slog.DebugContext(ctx, "chatService.CreatePersonalChat", "user1", user1, "user2", user2)
+func (s *ChatService) CreatePersonalChat(ctx context.Context, userID1 uuid.UUID, userName2 string) (*model.Chat, error) {
+	slog.DebugContext(ctx, "chatService.CreatePersonalChat", "user1", userID1, "user2", userName2)
 
 	newID, err := uuid.NewV7()
 	if err != nil {
@@ -140,7 +140,17 @@ func (s *ChatService) CreatePersonalChat(ctx context.Context, user1, user2 uuid.
 		LastMessageAt: time.Now(),
 	}
 
-	err = s.chatRepository.CreatePersonalChat(ctx, chat, user1, user2)
+	idMap, err := s.userService.getUserIDs(ctx, []string{userName2})
+	if err != nil {
+		return nil, fmt.Errorf("create personal chat: %w", err)
+	}
+
+	userID2, ok := idMap[userName2]
+	if !ok {
+		return nil, fmt.Errorf("%w: user name '%s'", errs.ErrUserNotFound, userName2)
+	}
+
+	err = s.chatRepository.CreatePersonalChat(ctx, chat, userID1, userID2)
 	if err != nil {
 		return nil, fmt.Errorf("create personal chat: %w", err)
 	}

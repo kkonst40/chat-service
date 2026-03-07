@@ -12,6 +12,35 @@
             margin: 0;
         }
 
+        #chat-header {
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chat-header h3 {
+            margin: 0;
+        }
+
+        #new-chat-btn {
+            border: none;
+            background: #4caf50;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 18px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #new-chat-btn:hover {
+            background: #43a047;
+        }
+
         #sidebar {
             width: 300px;
             border-right: 1px solid #ccc;
@@ -114,13 +143,53 @@
             padding: 10px 20px;
             cursor: pointer;
         }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-window {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 320px;
+            max-width: 90%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-row {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .modal-row label {
+            font-size: 0.85em;
+        }
+
+        .modal-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
     </style>
 </head>
 
 <body>
 
     <div id="sidebar">
-        <h3 style="padding-left: 10px;">Чаты</h3>
+        <div id="chat-header">
+            <h3>Чаты</h3>
+            <button id="new-chat-btn" onclick="openCreateChatModal()" title="Создать новый чат">+</button>
+        </div>
         <div id="chat-filters">
             <button class="filter-btn active" data-filter="all" onclick="setChatFilter('all')">Все</button>
             <button class="filter-btn" data-filter="personal" onclick="setChatFilter('personal')">Личные</button>
@@ -135,6 +204,37 @@
             <input type="text" id="msg-input" placeholder="Введите сообщение...">
             <button id="send-btn" onclick="handleSend()">Отправить</button>
             <button id="cancel-edit" style="display:none;" onclick="exitEditMode()">Отмена</button>
+        </div>
+    </div>
+
+    <div id="create-chat-modal" class="modal-backdrop">
+        <div class="modal-window">
+            <h3>Новый чат</h3>
+            <div class="modal-row">
+                <label>Тип чата:</label>
+                <div>
+                    <label>
+                        <input type="radio" name="chatType" value="personal" checked onchange="updateChatTypeUI()">
+                        Личный
+                    </label>
+                    <label style="margin-left: 10px;">
+                        <input type="radio" name="chatType" value="group" onchange="updateChatTypeUI()">
+                        Групповой
+                    </label>
+                </div>
+            </div>
+            <div class="modal-row" id="group-name-row" style="display: none;">
+                <label for="chat-name-input">Название группового чата</label>
+                <input type="text" id="chat-name-input" placeholder="Название чата">
+            </div>
+            <div class="modal-row">
+                <label for="chat-users-input">Имена пользователей (через запятую)</label>
+                <input type="text" id="chat-users-input" placeholder="user1, user2, user3">
+            </div>
+            <div class="modal-actions">
+                <button onclick="closeCreateChatModal()">Отмена</button>
+                <button onclick="submitCreateChat()">Создать</button>
+            </div>
         </div>
     </div>
 
@@ -324,6 +424,115 @@
             <span class="text-content">${payload.text}</span>
         `;
             messagesDiv.appendChild(div);
+        }
+
+        function openCreateChatModal() {
+            const modal = document.getElementById('create-chat-modal');
+            const usersInput = document.getElementById('chat-users-input');
+            const nameInput = document.getElementById('chat-name-input');
+
+            if (usersInput) usersInput.value = '';
+            if (nameInput) nameInput.value = '';
+
+            const personalRadio = document.querySelector('input[name="chatType"][value="personal"]');
+            if (personalRadio) personalRadio.checked = true;
+
+            updateChatTypeUI();
+
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeCreateChatModal() {
+            const modal = document.getElementById('create-chat-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function updateChatTypeUI() {
+            const selected = document.querySelector('input[name="chatType"]:checked');
+            const groupRow = document.getElementById('group-name-row');
+
+            if (!selected || !groupRow) return;
+
+            if (selected.value === 'group') {
+                groupRow.style.display = 'flex';
+            } else {
+                groupRow.style.display = 'none';
+            }
+        }
+
+        async function submitCreateChat() {
+            const selected = document.querySelector('input[name="chatType"]:checked');
+            const usersInput = document.getElementById('chat-users-input');
+            const nameInput = document.getElementById('chat-name-input');
+
+            if (!selected || !usersInput) {
+                return;
+            }
+
+            const rawUsers = usersInput.value.split(',')
+                .map(u => u.trim())
+                .filter(u => u.length > 0);
+
+            if (rawUsers.length === 0) {
+                alert('Укажите хотя бы одно имя пользователя.');
+                return;
+            }
+
+            try {
+                let response;
+
+                if (selected.value === 'personal') {
+                    const body = { userName: rawUsers[0] };
+                    response = await fetch('/chats/personal', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                } else {
+                    const chatName = (nameInput?.value || '').trim();
+                    if (!chatName) {
+                        alert('Укажите название группового чата.');
+                        return;
+                    }
+
+                    const body = { name: chatName, userNames: rawUsers };
+                    response = await fetch('/chats/group', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                }
+
+                if (!response || !response.ok) {
+                    const errorText = response ? await response.text() : '';
+                    alert(errorText || 'Не удалось создать чат.');
+                    return;
+                }
+
+                const locationHeader = response.headers.get('Location');
+                closeCreateChatModal();
+
+                if (locationHeader) {
+                    const parts = locationHeader.split('/');
+                    const chatId = parts[parts.length - 1];
+                    if (chatId) {
+                        await loadChats();
+                        await selectChat(chatId);
+                        return;
+                    }
+                }
+
+                await loadChats();
+            } catch (e) {
+                console.error(e);
+                alert('Произошла ошибка при создании чата.');
+            }
         }
     </script>
 </body>

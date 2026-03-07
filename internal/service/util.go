@@ -1,16 +1,14 @@
 package service
 
-import "github.com/google/uuid"
-
-func unique(IDs []uuid.UUID) []uuid.UUID {
-	uniqueIDs := make(map[uuid.UUID]struct{})
-	for i := range IDs {
-		uniqueIDs[IDs[i]] = struct{}{}
+func unique[T comparable](values []T) []T {
+	uniqueValues := make(map[T]struct{})
+	for _, value := range values {
+		uniqueValues[value] = struct{}{}
 	}
 
-	result := make([]uuid.UUID, 0, len(uniqueIDs))
-	for id := range uniqueIDs {
-		result = append(result, id)
+	result := make([]T, 0, len(uniqueValues))
+	for value := range uniqueValues {
+		result = append(result, value)
 	}
 
 	return result

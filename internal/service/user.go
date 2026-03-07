@@ -79,7 +79,7 @@ func (s *UserService) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]u
 	return userIDs, nil
 }
 
-func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID, requesterID uuid.UUID) error {
+func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNames []string, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "userService.AddChatUsers", "chatID", chatID)
 
 	if !s.userInChat(ctx, chatID, requesterID) {
@@ -91,12 +91,21 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userID
 		)
 	}
 
-	existingUserIDs, err := s.existMany(ctx, userIDs)
+	userIDs := make([]uuid.UUID, 0, len(userNames))
+
+	userIDsMap, err := s.getUserIDs(ctx, userNames)
 	if err != nil {
-		return fmt.Errorf("check users existence before add to chat %v: %w", chatID, err)
+		return fmt.Errorf("get user IDs before add to chat %v: %w", chatID, err)
 	}
 
-	err = s.userRepository.AddChatUsers(ctx, chatID, existingUserIDs)
+	for _, userName := range userNames {
+		userID, ok := userIDsMap[userName]
+		if ok {
+			userIDs = append(userIDs, userID)
+		}
+	}
+
+	err = s.userRepository.AddChatUsers(ctx, chatID, userIDs)
 	if err != nil {
 		if errors.Is(err, errs.ErrChatNotFound) {
 			return fmt.Errorf("%w: ID %v", err, chatID)
@@ -303,5 +312,20 @@ func (s *UserService) getUserLogins(ctx context.Context, userIDs []uuid.UUID) (m
 		slog.ErrorContext(ctx, "user login cache SetUserLogins error", "error", err)
 	}
 
+	return result, nil
+}
+
+func (s *UserService) getUserIDs(ctx context.Context, userLogins []string) (map[string]uuid.UUID, error) {
+	userLogins = unique(userLogins)
+	result := make(map[string]uuid.UUID, len(userLogins))
+
+	userInfos, err := s.ssoClient.GetUsersIDs(ctx, userLogins)
+	if err != nil {
+		return nil, fmt.Errorf("%w: sso service (GetUsersIDs): %w", errs.ErrExternalService, err)
+	}
+
+	for _, userInfo := range userInfos {
+		result[userInfo.Login] = userInfo.ID
+	}
 	return result, nil
 }

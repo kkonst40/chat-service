@@ -74,7 +74,7 @@ func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.userService.AddChatUsers(ctx, chatID, req.UserIDs, requesterID)
+	err = h.userService.AddChatUsers(ctx, chatID, req.UserNames, requesterID)
 	if err != nil {
 		WriteError(ctx, w, err)
 		return
