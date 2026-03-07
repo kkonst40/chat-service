@@ -2,11 +2,9 @@ package sso
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 )
@@ -35,11 +33,7 @@ func (c *SSOService) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf(
-			"%w: sso service (ExistMany): %w",
-			errs.ErrExternalService,
-			err,
-		)
+		return nil, err
 	}
 
 	existingIDs := make([]uuid.UUID, 0, len(resp.GetExistingIds()))
@@ -68,7 +62,7 @@ func (c *SSOService) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: sso service: %w", errs.ErrExternalService, err)
+		return nil, err
 	}
 
 	result := make([]model.UserInfo, 0, len(resp.GetUsers()))
@@ -84,5 +78,31 @@ func (c *SSOService) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([
 		})
 	}
 
+	return result, nil
+}
+
+func (c *SSOService) GetUsersIDs(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
+	ssoCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	resp, err := c.client.GetUsersIDs(ssoCtx, &pb.GetUsersIDsRequest{
+		Logins: userLogins,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]model.UserInfo, 0, len(resp.GetUsers()))
+	for _, u := range resp.GetUsers() {
+		parsedID, err := uuid.Parse(u.GetId())
+		if err != nil {
+			continue
+		}
+		result = append(result, model.UserInfo{
+			ID:    parsedID,
+			Login: u.GetLogin(),
+		})
+	}
 	return result, nil
 }
