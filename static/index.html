@@ -163,24 +163,24 @@
 
         function handleServerEvent(event) {
             if (event.type === 'CREATE_MESSAGE') {
-                const chat = allChats.find(c => c.id === event.chat_id);
+                const chat = allChats.find(c => c.id === event.chatId);
                 if (chat) {
                     chat.lastMessageAt = new Date().toISOString();
                     renderChats();
                 }
 
-                if (event.chat_id === currentChatId) {
+                if (event.chatId === currentChatId) {
                     appendMessage(event.payload);
                 }
             }
 
-            if (event.chat_id === currentChatId) {
+            if (event.chatId === currentChatId) {
                 if (event.type === 'UPDATE_MESSAGE') {
-                    const msgTextSpan = document.querySelector(`#msg-${event.payload.msg_id} .text-content`);
+                    const msgTextSpan = document.querySelector(`#msg-${event.payload.msgId} .text-content`);
                     if (msgTextSpan) msgTextSpan.innerText = event.payload.text;
                 }
                 if (event.type === 'DELETE_MESSAGE') {
-                    const msgEl = document.getElementById(`msg-${event.payload.msg_id}`);
+                    const msgEl = document.getElementById(`msg-${event.payload.msgId}`);
                     if (msgEl) msgEl.remove();
                 }
             }
@@ -266,9 +266,9 @@
 
             if (data && data.messages) {
                 data.messages.reverse().forEach(msg => appendMessage({
-                    msg_id: msg.id,
-                    user_id: msg.userId,
-                    user_name: msg.userName,
+                    msgId: msg.id,
+                    userId: msg.userId,
+                    userName: msg.userName,
                     text: msg.text
                 }));
             }
@@ -313,13 +313,12 @@
             const messagesDiv = document.getElementById('messages');
             const div = document.createElement('div');
             div.className = 'message';
-            div.id = `msg-${payload.msg_id}`;
-            const displayName = payload.userName || payload.user_name || payload.user_id;
-            //const displayName = payload.userName || payload.user_name
+            div.id = `msg-${payload.msgId}`;
+            const displayName = payload.userName || payload.userId;
             div.innerHTML = `
             <div class="msg-actions">
-                <span class="btn-edit" onclick="enterEditMode('${payload.msg_id}', '${payload.text.replace(/'/g, "\\'")}')">ред.</span>
-                <span class="btn-del" onclick="deleteMessage('${payload.msg_id}')">удалить</span>
+                <span class="btn-edit" onclick="enterEditMode('${payload.msgId}', '${payload.text.replace(/'/g, "\\'")}')">ред.</span>
+                <span class="btn-del" onclick="deleteMessage('${payload.msgId}')">удалить</span>
             </div>
             <strong>${displayName}:</strong> 
             <span class="text-content">${payload.text}</span>

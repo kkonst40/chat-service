@@ -108,13 +108,20 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	}
 	slog.DebugContext(ctx, "message created")
 
+	logins, err := s.userService.getUserLogins(ctx, []uuid.UUID{userID})
+	if err != nil {
+		return nil, fmt.Errorf("get user logins: %w", err)
+	}
+	userName := logins[userID]
+
 	s.dispatcher.Publish(event.Event{
 		Type:   event.CreateMsg,
 		ChatID: chatID,
 		Payload: event.CreateMsgEvent{
-			MsgID:  newID,
-			UserID: userID,
-			Text:   text,
+			MsgID:    newID,
+			UserID:   userID,
+			UserName: userName,
+			Text:     text,
 		},
 	})
 
