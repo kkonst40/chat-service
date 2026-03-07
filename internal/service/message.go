@@ -108,11 +108,11 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	}
 	slog.DebugContext(ctx, "message created")
 
-	logins, err := s.userService.getUserLogins(ctx, []uuid.UUID{userID})
+	nameMap, err := s.userService.getUserLogins(ctx, []uuid.UUID{userID})
 	if err != nil {
 		return nil, fmt.Errorf("get user logins: %w", err)
 	}
-	userName := logins[userID]
+	userName := nameMap[userID]
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.CreateMsg,
@@ -121,7 +121,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 			MsgID:    newID,
 			UserID:   userID,
 			UserName: userName,
-			Text:     text,
+			Text:     msg.Text,
 		},
 	})
 
@@ -170,7 +170,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 		ChatID: msg.ChatID,
 		Payload: event.UpdateMsgEvent{
 			MsgID: msgID,
-			Text:  text,
+			Text:  newMsg.Text,
 		},
 	})
 
