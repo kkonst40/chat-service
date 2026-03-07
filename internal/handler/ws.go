@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/kkonst40/ichat/internal/auth"
 	"github.com/kkonst40/ichat/internal/hub"
 )
 
@@ -43,7 +44,7 @@ var upgrader = websocket.Upgrader{
 
 func (h *WSHandler) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

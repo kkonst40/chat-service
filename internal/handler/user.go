@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/auth"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/dto"
@@ -27,7 +28,7 @@ func NewUserHandler(newUserService *service.UserService, validate *validator.Val
 
 func (h *UserHandler) GetChatUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
@@ -60,7 +61,7 @@ func (h *UserHandler) GetChatUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
@@ -85,7 +86,7 @@ func (h *UserHandler) AddChatUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
@@ -123,7 +124,7 @@ func (h *UserHandler) UpdateChatUserRole(w http.ResponseWriter, r *http.Request)
 
 func (h *UserHandler) DeleteChatUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {

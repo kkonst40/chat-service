@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/ichat/internal/auth"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/middleware"
 )
@@ -14,7 +14,8 @@ func NewRouter(
 	userHandler *handler.UserHandler,
 	messageHandler *handler.MessageHandler,
 	wsHandler *handler.WSHandler,
-	cfg *config.Config,
+	tokenValidator *auth.TokenValidator,
+	cookieName string,
 ) http.Handler {
 	router := http.NewServeMux()
 
@@ -35,7 +36,6 @@ func NewRouter(
 	router.HandleFunc("PUT /chatmessages/{msgId}", messageHandler.UpdateMessage)
 	router.HandleFunc("DELETE /chatmessages/{msgId}", messageHandler.DeleteMessage)
 
-	// for test
 	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/index.html")
 	})
@@ -44,13 +44,13 @@ func NewRouter(
 		middleware.Recovery,
 		middleware.Logger,
 		middleware.Timeout(3*time.Second),
-		middleware.Auth(cfg),
+		middleware.Auth(tokenValidator, cookieName),
 	)
 
 	wsStack := middleware.CreateStack(
 		middleware.Recovery,
 		middleware.Logger,
-		middleware.Auth(cfg),
+		middleware.Auth(tokenValidator, cookieName),
 	)
 
 	mainRouter := http.NewServeMux()

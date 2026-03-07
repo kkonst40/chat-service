@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 )
 
@@ -36,9 +35,4 @@ func bindJSON(r *http.Request, dst any, validate *validator.Validate) error {
 	}
 
 	return validate.Struct(dst)
-}
-
-func getUserID(ctx context.Context) uuid.UUID {
-	userID := ctx.Value("requesterID").(string)
-	return uuid.MustParse(userID)
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kkonst40/ichat/internal/auth"
 	"github.com/kkonst40/ichat/internal/cache"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/dispatcher"
@@ -50,13 +51,6 @@ func New(cfg *config.Config) (*App, error) {
 		messageRepo = postgres.NewMessageRepository(db)
 	)
 
-	// for test
-	// var (
-	// 	memDB       = memory.NewDB()
-	// 	userRepo    = memory.NewUserRepository(memDB)
-	// 	chatRepo    = memory.NewChatRepository(memDB)
-	// 	messageRepo = memory.NewMessageRepository(memDB)
-	// )
 	slog.Info("Repositories are initialized")
 
 	conn, err := grpc.NewClient(
@@ -68,9 +62,10 @@ func New(cfg *config.Config) (*App, error) {
 	}
 
 	var (
-		ssoClient  = sso.NewSSOClient(pb.NewUserServiceClient(conn))
-		wsHub      = hub.NewHub()
-		dispatcher = dispatcher.New(wsHub, userRepo)
+		ssoClient      = sso.NewSSOClient(pb.NewUserServiceClient(conn))
+		wsHub          = hub.NewHub()
+		dispatcher     = dispatcher.New(wsHub, userRepo)
+		tokenValidator = auth.NewTokenValidator(cfg)
 
 		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, userLoginCache)
 		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
@@ -92,7 +87,8 @@ func New(cfg *config.Config) (*App, error) {
 		userHandler,
 		messageHandler,
 		wsHandler,
-		cfg,
+		tokenValidator,
+		cfg.JWT.CookieName,
 	)
 
 	server := &http.Server{

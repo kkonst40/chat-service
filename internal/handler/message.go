@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/auth"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/service"
@@ -34,7 +35,7 @@ const (
 
 func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	var (
 		from  uuid.UUID
@@ -89,7 +90,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 func (h *MessageHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
@@ -113,7 +114,7 @@ func (h *MessageHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 
 func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	msgID, err := uuid.Parse(r.PathValue("msgId"))
 	if err != nil {
@@ -137,7 +138,7 @@ func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 
 func (h *MessageHandler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	msgID, err := uuid.Parse(r.PathValue("msgId"))
 	if err != nil {

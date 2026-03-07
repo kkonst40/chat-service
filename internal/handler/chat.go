@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/auth"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/dto"
@@ -52,7 +53,7 @@ func (h *ChatHandler) GetChat(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	var chats []model.Chat
 	var err error
@@ -91,7 +92,7 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChatHandler) CreateGroupChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	var req dto.CreateGroupChatRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
@@ -114,7 +115,7 @@ func (h *ChatHandler) CreateGroupChat(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChatHandler) CreatePersonalChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	var req dto.CreatePersonalChatRequest
 	if err := bindJSON(r, &req, h.validate); err != nil {
@@ -137,7 +138,7 @@ func (h *ChatHandler) CreatePersonalChat(w http.ResponseWriter, r *http.Request)
 
 func (h *ChatHandler) UpdateChatName(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
@@ -163,7 +164,7 @@ func (h *ChatHandler) UpdateChatName(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChatHandler) DeleteChat(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requesterID := getUserID(ctx)
+	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
