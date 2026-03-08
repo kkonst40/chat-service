@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -162,23 +161,15 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 
 	slog.DebugContext(ctx, "adding chat users in DB", "chatID", chatID, "userIDs", userIDs)
 
-	var queryBuilder strings.Builder
-	queryBuilder.WriteString("INSERT INTO users (id, chat_id, role) VALUES ")
-	args := make([]any, 0, len(userIDs)*3)
+	const query = `
+		INSERT INTO users (id, chat_id, role)
+		SELECT u_id, $1, $2
+		FROM UNNEST($3::uuid[]) AS u_id
+		ON CONFLICT (id, chat_id) DO NOTHING
+		RETURNING id
+	`
 
-	for i, userID := range userIDs {
-		if i > 0 {
-			queryBuilder.WriteString(", ")
-		}
-
-		n := i * 3
-		fmt.Fprintf(&queryBuilder, "($%d, $%d, $%d)", n+1, n+2, n+3)
-		args = append(args, userID, chatID, model.Common)
-	}
-
-	queryBuilder.WriteString(" ON CONFLICT (id, chat_id) DO NOTHING RETURNING id")
-
-	rows, err := r.db.QueryContext(ctx, queryBuilder.String(), args...)
+	rows, err := r.db.QueryContext(ctx, query, chatID, model.Common, userIDs)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -186,7 +177,6 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 				return nil, errs.ErrChatNotFound
 			}
 		}
-
 		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
 	}
 	defer rows.Close()
