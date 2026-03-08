@@ -65,6 +65,10 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 	return result, nil
 }
 
+func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	return make(map[uuid.UUID]uuid.UUID), nil
+}
+
 func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()

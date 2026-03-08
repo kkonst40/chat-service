@@ -4,33 +4,41 @@ import (
 	"context"
 	"log/slog"
 	"os"
+
+	"github.com/google/uuid"
 )
 
-type ContextKey string
+type ctxKey struct{}
 
-const (
-	LoggerCtxKey ContextKey = "logger"
-)
+var requestIDKey = ctxKey{}
 
-func FromContext(ctx context.Context) *slog.Logger {
-	if logger, ok := ctx.Value(LoggerCtxKey).(*slog.Logger); ok {
-		return logger
+func ContextWithRequestID(ctx context.Context, requestID uuid.UUID) context.Context {
+	return context.WithValue(ctx, requestIDKey, requestID.String())
+}
+
+type ContextHandler struct {
+	slog.Handler
+}
+
+func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
+	if id, ok := ctx.Value(requestIDKey).(string); ok {
+		r.AddAttrs(slog.String("requestID", id))
 	}
-	return slog.Default()
+	return h.Handler.Handle(ctx, r)
 }
 
 func New(env string) *slog.Logger {
-	var log *slog.Logger
+	var baseHandler slog.Handler
 	switch env {
 	case "dev":
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		baseHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	case "prod":
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
+		baseHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	default:
+		baseHandler = slog.Default().Handler()
 	}
 
-	return log
+	logger := slog.New(&ContextHandler{baseHandler})
+
+	return logger
 }

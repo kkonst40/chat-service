@@ -9,6 +9,7 @@ import (
 type GetChatResponse struct {
 	ID            uuid.UUID `json:"id"`
 	Name          string    `json:"name"`
+	IsGroup       bool      `json:"isGroup"`
 	LastMessageAt time.Time `json:"lastMessageAt"`
 }
 
@@ -16,9 +17,13 @@ type GetChatsResponse struct {
 	Chats []GetChatResponse `json:"chats"`
 }
 
-type CreateChatRequest struct {
-	Name    string      `json:"name" validate:"required"`
-	UserIDs []uuid.UUID `json:"userIds" validate:"required"`
+type CreateGroupChatRequest struct {
+	Name      string   `json:"name" validate:"required"`
+	UserNames []string `json:"userNames" validate:"required"`
+}
+
+type CreatePersonalChatRequest struct {
+	UserName string `json:"userName" validate:"required"`
 }
 
 type UpdateChatNameRequest struct {

@@ -9,6 +9,7 @@ import (
 type GetMessageResponse struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"userId"`
+	UserName  string    `json:"userName"`
 	ChatID    uuid.UUID `json:"chatId"`
 	Text      string    `json:"text"`
 	CreatedAt time.Time `json:"createdAt"`

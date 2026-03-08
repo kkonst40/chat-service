@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -13,17 +12,17 @@ import (
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestID, _ := uuid.NewV7()
-		log := slog.With("requestID", requestID.String())
+		ctx := logger.ContextWithRequestID(r.Context(), requestID)
 
-		log.Info("Request started",
+		slog.InfoContext(
+			ctx,
+			"Request started",
 			"method", r.Method,
 			"path", r.URL.Path,
 		)
 
-		ctx := context.WithValue(r.Context(), logger.LoggerCtxKey, log)
-
 		start := time.Now()
 		next.ServeHTTP(w, r.WithContext(ctx))
-		log.Info("Request handling time", "time", time.Since(start))
+		slog.InfoContext(ctx, "Request handling time", "time", time.Since(start))
 	})
 }

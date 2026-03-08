@@ -1,51 +1,38 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/ichat/internal/auth"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/handler"
-	"github.com/kkonst40/ichat/internal/logger"
 )
 
-type UserClaims struct {
-	ID       uuid.UUID `json:"id"`
-	UserName string    `json:"userName"`
-	TokenID  uuid.UUID `json:"tokenId"`
-	jwt.RegisteredClaims
-}
-
-func Auth(cfg *config.Config) Middleware {
+func Auth(validator *auth.TokenValidator, cookieName string) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			log := logger.FromContext(ctx)
 
-			token, err := r.Cookie(cfg.JWT.CookieName)
+			token, err := r.Cookie(cookieName)
 			if err != nil {
-				log.Error("Token not found", "error", err.Error())
-				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
+				handler.WriteError(ctx, w, fmt.Errorf("%w: token not found: %w", errs.ErrUnauthorized, err))
 				return
 			}
 
-			log.Debug("", "token", token.Value)
+			slog.DebugContext(ctx, "", "token", token.Value)
 
-			claims, err := validateToken(token.Value, cfg)
+			userID, err := validator.ValidateToken(token.Value)
 			if err != nil {
-				log.Error("Token validation error", "error", err.Error())
-				handler.WriteError(w, fmt.Errorf("%w: invalid token", errs.ErrUnauthorized), log)
+				handler.WriteError(ctx, w, fmt.Errorf("%w: token validation error: %w", errs.ErrUnauthorized, err))
 				return
 			}
 
-			log.Debug("", "userID", claims.ID)
+			slog.DebugContext(ctx, "", "userID", userID)
 
-			ctx = context.WithValue(ctx, "requesterID", claims.ID.String())
+			ctx = auth.ContextWithUserID(ctx, userID)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -54,8 +41,13 @@ func Auth(cfg *config.Config) Middleware {
 
 func DummyAuthQ(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID := r.URL.Query().Get("userId")
-		ctx := context.WithValue(r.Context(), "requesterID", userID)
+		userIDString := r.URL.Query().Get("userId")
+		userID, err := uuid.Parse(userIDString)
+		if err != nil {
+			handler.WriteError(r.Context(), w, errs.ErrUnauthorized)
+		}
+
+		ctx := auth.ContextWithUserID(r.Context(), userID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
@@ -63,36 +55,14 @@ func DummyAuthQ(next http.Handler) http.Handler {
 
 func DummyAuthH(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Header.Get("UserID")
-		ctx := context.WithValue(r.Context(), "requesterID", userID)
+		userIDString := r.Header.Get("UserID")
+		userID, err := uuid.Parse(userIDString)
+		if err != nil {
+			handler.WriteError(r.Context(), w, errs.ErrUnauthorized)
+		}
+
+		ctx := auth.ContextWithUserID(r.Context(), userID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-func validateToken(tokenString string, cfg *config.Config) (*UserClaims, error) {
-	claims := &UserClaims{}
-
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		claims,
-		func(token *jwt.Token) (any, error) {
-			if token.Method != jwt.SigningMethodHS256 {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(cfg.JWT.SecretKey), nil
-		},
-		jwt.WithIssuer(cfg.JWT.Issuer),
-		jwt.WithAudience(cfg.JWT.Audience),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !token.Valid {
-		return nil, jwt.ErrTokenInvalidClaims
-	}
-
-	return claims, nil
 }

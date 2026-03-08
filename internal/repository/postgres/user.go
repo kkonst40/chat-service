@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -26,14 +26,13 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 }
 
 func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error) {
-	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, chat_id, role
 		FROM users
 		WHERE id = $1 AND chat_id = $2
 	`
 
-	log.Debug("getting chat user from DB", "chatID", chatID, "userID", userID)
+	slog.DebugContext(ctx, "getting chat user from DB", "chatID", chatID, "userID", userID)
 
 	var user model.User
 	err := r.db.QueryRowContext(ctx, query, userID, chatID).Scan(
@@ -53,14 +52,13 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 }
 
 func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
-	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id
 		FROM users
 		WHERE chat_id = $1
 	`
 
-	log.Debug("getting chat userIDs from DB", "chatID", chatID)
+	slog.DebugContext(ctx, "getting chat userIDs from DB", "chatID", chatID)
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
@@ -86,14 +84,13 @@ func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) (
 }
 
 func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error) {
-	log := logger.FromContext(ctx)
 	const query = `
 		SELECT id, chat_id, role
 		FROM users
 		WHERE chat_id = $1
 	`
 
-	log.Debug("getting chat users from DB", "chatID", chatID)
+	slog.DebugContext(ctx, "getting chat users from DB", "chatID", chatID)
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
@@ -122,13 +119,48 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 	return users, nil
 }
 
+func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+	const query = `
+		SELECT c.id, u2.id
+		FROM users u1
+		JOIN chats c ON u1.chat_id = c.id
+		JOIN users u2 ON u1.chat_id = u2.chat_id
+		WHERE u1.id = $1
+			AND c.is_group = FALSE
+			AND u2.id != $1;
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	chatsInterlocutors := make(map[uuid.UUID]uuid.UUID)
+	for rows.Next() {
+		var chatID uuid.UUID
+		var interlocutorID uuid.UUID
+		if err := rows.Scan(&chatID, &interlocutorID); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+
+		chatsInterlocutors[chatID] = interlocutorID
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+
+	return chatsInterlocutors, nil
+
+}
+
 func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error {
-	log := logger.FromContext(ctx)
 	if len(userIDs) == 0 {
 		return nil
 	}
 
-	log.Debug("adding chat users in DB", "chatID", chatID, "userIDs", userIDs)
+	slog.DebugContext(ctx, "adding chat users in DB", "chatID", chatID, "userIDs", userIDs)
 
 	var queryBuilder strings.Builder
 	queryBuilder.WriteString("INSERT INTO users (id, chat_id, role) VALUES ")
@@ -161,13 +193,12 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 }
 
 func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		DELETE FROM users
 		WHERE id = $1 AND chat_id = $2
 	`
 
-	log.Debug("deleting chat user in DB", "chatID", chatID, "userID", userID)
+	slog.DebugContext(ctx, "deleting chat user in DB", "chatID", chatID, "userID", userID)
 
 	if _, err := r.db.ExecContext(ctx, query, userID, chatID); err != nil {
 		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
@@ -177,14 +208,13 @@ func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, u
 }
 
 func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role) error {
-	log := logger.FromContext(ctx)
 	const query = `
 		UPDATE users
 		SET role = $1
 		WHERE id = $2 AND chat_id = $3
 	`
 
-	log.Debug("updating chat user role in DB", "chatID", chatID, "userID", userID, "role", newRole)
+	slog.DebugContext(ctx, "updating chat user role in DB", "chatID", chatID, "userID", userID, "role", newRole)
 
 	res, err := r.db.ExecContext(ctx, query, newRole, userID, chatID)
 	if err != nil {
@@ -204,7 +234,6 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 }
 
 func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error) {
-	log := logger.FromContext(ctx)
 	const query = `
 		SELECT EXISTS(
 			SELECT 1
@@ -213,7 +242,7 @@ func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUI
 		)
 	`
 
-	log.Debug("checking chat user existance in DB", "chatID", chatID, "userID", userID)
+	slog.DebugContext(ctx, "checking chat user existance in DB", "chatID", chatID, "userID", userID)
 
 	var exists bool
 

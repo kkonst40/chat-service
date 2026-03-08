@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_Exist_FullMethodName = "/user.UserService/Exist"
+	UserService_Exist_FullMethodName          = "/user.UserService/Exist"
+	UserService_GetUsersLogins_FullMethodName = "/user.UserService/GetUsersLogins"
+	UserService_GetUsersIDs_FullMethodName    = "/user.UserService/GetUsersIDs"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
 	Exist(ctx context.Context, in *ExistRequest, opts ...grpc.CallOption) (*ExistResponse, error)
+	GetUsersLogins(ctx context.Context, in *GetUsersLoginsRequest, opts ...grpc.CallOption) (*GetUsersLoginsResponse, error)
+	GetUsersIDs(ctx context.Context, in *GetUsersIDsRequest, opts ...grpc.CallOption) (*GetUsersIDsResponse, error)
 }
 
 type userServiceClient struct {
@@ -47,11 +51,33 @@ func (c *userServiceClient) Exist(ctx context.Context, in *ExistRequest, opts ..
 	return out, nil
 }
 
+func (c *userServiceClient) GetUsersLogins(ctx context.Context, in *GetUsersLoginsRequest, opts ...grpc.CallOption) (*GetUsersLoginsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUsersLoginsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUsersLogins_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetUsersIDs(ctx context.Context, in *GetUsersIDsRequest, opts ...grpc.CallOption) (*GetUsersIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUsersIDsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUsersIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
 type UserServiceServer interface {
 	Exist(context.Context, *ExistRequest) (*ExistResponse, error)
+	GetUsersLogins(context.Context, *GetUsersLoginsRequest) (*GetUsersLoginsResponse, error)
+	GetUsersIDs(context.Context, *GetUsersIDsRequest) (*GetUsersIDsResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -64,6 +90,12 @@ type UnimplementedUserServiceServer struct{}
 
 func (UnimplementedUserServiceServer) Exist(context.Context, *ExistRequest) (*ExistResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Exist not implemented")
+}
+func (UnimplementedUserServiceServer) GetUsersLogins(context.Context, *GetUsersLoginsRequest) (*GetUsersLoginsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUsersLogins not implemented")
+}
+func (UnimplementedUserServiceServer) GetUsersIDs(context.Context, *GetUsersIDsRequest) (*GetUsersIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUsersIDs not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -104,6 +136,42 @@ func _UserService_Exist_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetUsersLogins_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsersLoginsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUsersLogins(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUsersLogins_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUsersLogins(ctx, req.(*GetUsersLoginsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetUsersIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsersIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUsersIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUsersIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUsersIDs(ctx, req.(*GetUsersIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +182,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Exist",
 			Handler:    _UserService_Exist_Handler,
+		},
+		{
+			MethodName: "GetUsersLogins",
+			Handler:    _UserService_GetUsersLogins_Handler,
+		},
+		{
+			MethodName: "GetUsersIDs",
+			Handler:    _UserService_GetUsersIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -20,5 +20,5 @@ type UpdateChatUserRoleRequest struct {
 }
 
 type AddChatUsersRequest struct {
-	UserIDs []uuid.UUID `json:"userIds" validate:"required"`
+	UserNames []string `json:"userNames" validate:"required"`
 }

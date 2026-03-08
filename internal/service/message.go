@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,7 +12,6 @@ import (
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/event"
 	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/logger"
 	"github.com/kkonst40/ichat/internal/repository"
 )
 
@@ -42,8 +42,7 @@ func NewMessageService(
 }
 
 func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64, requesterID uuid.UUID) ([]model.Message, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("messageService.GetChatMessages", "chatID", chatID)
+	slog.DebugContext(ctx, "messageService.GetChatMessages", "chatID", chatID)
 
 	if !s.chatService.ChatExists(ctx, chatID) {
 		return nil, fmt.Errorf(
@@ -65,14 +64,27 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	if err != nil {
 		return nil, fmt.Errorf("get chat %v messages: %w", chatID, err)
 	}
-	log.Debug("messages retrieved")
+	slog.DebugContext(ctx, "messages retrieved")
+
+	userIDs := make([]uuid.UUID, 0, len(messages))
+	for i := range messages {
+		userIDs = append(userIDs, messages[i].UserID)
+	}
+
+	logins, err := s.userService.getUserLogins(ctx, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("get user logins: %w", err)
+	}
+
+	for i := range messages {
+		messages[i].UserName = logins[messages[i].UserID]
+	}
 
 	return messages, nil
 }
 
 func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {
-	log := logger.FromContext(ctx)
-	log.Debug("messageService.CreateMessage", "chatID", chatID)
+	slog.DebugContext(ctx, "messageService.CreateMessage", "chatID", chatID)
 
 	newID, err := uuid.NewV7()
 	if err != nil {
@@ -94,15 +106,22 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 
 		return nil, fmt.Errorf("create message: %w", err)
 	}
-	log.Debug("message created")
+	slog.DebugContext(ctx, "message created")
+
+	nameMap, err := s.userService.getUserLogins(ctx, []uuid.UUID{userID})
+	if err != nil {
+		return nil, fmt.Errorf("get user logins: %w", err)
+	}
+	userName := nameMap[userID]
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.CreateMsg,
 		ChatID: chatID,
 		Payload: event.CreateMsgEvent{
-			MsgID:  newID,
-			UserID: userID,
-			Text:   text,
+			MsgID:    newID,
+			UserID:   userID,
+			UserName: userName,
+			Text:     msg.Text,
 		},
 	})
 
@@ -110,8 +129,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 }
 
 func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, text string, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("messageService.UpdateMessage", "msgID", msgID)
+	slog.DebugContext(ctx, "messageService.UpdateMessage", "msgID", msgID)
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
@@ -145,14 +163,14 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 		}
 		return fmt.Errorf("update message %v: %w", msgID, err)
 	}
-	log.Debug("message updated")
+	slog.DebugContext(ctx, "message updated")
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.UpdateMsg,
 		ChatID: msg.ChatID,
 		Payload: event.UpdateMsgEvent{
 			MsgID: msgID,
-			Text:  text,
+			Text:  newMsg.Text,
 		},
 	})
 
@@ -160,8 +178,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 }
 
 func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, requesterID uuid.UUID) error {
-	log := logger.FromContext(ctx)
-	log.Debug("messageService.DeleteMessage", "msgID", msgID)
+	slog.DebugContext(ctx, "messageService.DeleteMessage", "msgID", msgID)
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
@@ -176,7 +193,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 		if err != nil {
 			return fmt.Errorf("delete message %v: %w", msgID, err)
 		}
-		log.Debug("message deleted")
+		slog.DebugContext(ctx, "message deleted")
 
 		return nil
 	}
@@ -203,7 +220,7 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 	if err != nil {
 		return fmt.Errorf("delete message %v: %w", msgID, err)
 	}
-	log.Debug("message deleted")
+	slog.DebugContext(ctx, "message deleted")
 
 	s.dispatcher.Publish(event.Event{
 		Type:   event.DeleteMsg,
