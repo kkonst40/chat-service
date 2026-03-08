@@ -244,6 +244,7 @@
         let socket = null;
         let allChats = [];
         let currentChatFilter = 'all';
+        const currentUserID = "{{.UserID}}"
 
         document.addEventListener('DOMContentLoaded', () => {
             loadChats();
@@ -333,7 +334,6 @@
             const list = document.getElementById('chats-list');
             list.innerHTML = '';
 
-            // Сортировка: новые (большие даты) — сверху
             const sortedChats = [...allChats].sort((a, b) =>
                 new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
             );
@@ -342,7 +342,6 @@
                 const div = document.createElement('div');
                 div.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
 
-                // Форматируем дату для наглядности
                 const dateStr = new Date(chat.lastMessageAt).toLocaleString();
 
                 div.innerHTML = `
@@ -379,13 +378,14 @@
             const text = input.value.trim();
             if (!text || !currentChatId) return;
 
+            input.value = '';
+
             if (editingMessageId) {
                 await apiRequest(`/chatmessages/${editingMessageId}`, 'PUT', { text });
                 exitEditMode();
             } else {
                 await apiRequest(`/chatmessages/${currentChatId}`, 'POST', { text });
             }
-            input.value = '';
         }
 
         function enterEditMode(msgId, currentText) {
@@ -414,7 +414,8 @@
             const div = document.createElement('div');
             div.className = 'message';
             div.id = `msg-${payload.msgId}`;
-            const displayName = payload.userName || payload.userId;
+            const isCurrentUser = payload.userId && currentUserID && String(payload.userId) === String(currentUserID);
+            const displayName = isCurrentUser ? 'Я' : (payload.userName || payload.userId);
             div.innerHTML = `
             <div class="msg-actions">
                 <span class="btn-edit" onclick="enterEditMode('${payload.msgId}', '${payload.text.replace(/'/g, "\\'")}')">ред.</span>
