@@ -69,7 +69,7 @@ func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, user
 	return make(map[uuid.UUID]uuid.UUID), nil
 }
 
-func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error {
+func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) ([]uuid.UUID, error) {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
@@ -85,7 +85,7 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 		}
 	}
 
-	return nil
+	return userIDs, nil
 }
 
 func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error {

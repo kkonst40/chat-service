@@ -2,7 +2,6 @@ package event
 
 import (
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/domain/model"
 )
 
 type EventType string
@@ -44,16 +43,17 @@ type DeleteMsgEvent struct {
 }
 
 type CreateUserEvent struct {
-	UserID uuid.UUID `json:"userId"`
-}
-
-type UpdateUserEvent struct {
-	UserID uuid.UUID  `json:"userId"`
-	Role   model.Role `json:"role"`
+	UserID      uuid.UUID `json:"userId"`
+	UserName    string    `json:"userName"`
+	NewUserID   uuid.UUID `json:"newUserId"`
+	NewUserName string    `json:"newUserName"`
 }
 
 type DeleteUserEvent struct {
-	UserID uuid.UUID `json:"userId"`
+	UserID          uuid.UUID `json:"userId"`
+	UserName        string    `json:"userName"`
+	DeletedUserID   uuid.UUID `json:"deletedUserId"`
+	DeletedUserName string    `json:"deletedUserName"`
 }
 
 type CreateChatEvent struct {
@@ -65,4 +65,6 @@ type UpdateChatEvent struct {
 }
 
 type DeleteChatEvent struct {
+	UserID   uuid.UUID `json:"userId"`
+	UserName string    `json:"userName"`
 }
