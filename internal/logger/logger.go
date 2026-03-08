@@ -4,11 +4,17 @@ import (
 	"context"
 	"log/slog"
 	"os"
+
+	"github.com/google/uuid"
 )
 
-type ctxKey string
+type ctxKey struct{}
 
-const requestIDKey ctxKey = "requestID"
+var requestIDKey = ctxKey{}
+
+func ContextWithRequestID(ctx context.Context, requestID uuid.UUID) context.Context {
+	return context.WithValue(ctx, requestIDKey, requestID.String())
+}
 
 type ContextHandler struct {
 	slog.Handler
