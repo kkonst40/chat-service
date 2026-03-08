@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kkonst40/ichat/internal/dispatcher"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/ichat/internal/domain/event"
 	"github.com/kkonst40/ichat/internal/domain/model"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/repository"
@@ -104,7 +105,7 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 		}
 	}
 
-	err = s.userRepository.AddChatUsers(ctx, chatID, userIDs)
+	addedUserIDs, err := s.userRepository.AddChatUsers(ctx, chatID, userIDs)
 	if err != nil {
 		if errors.Is(err, errs.ErrChatNotFound) {
 			return fmt.Errorf("%w: ID %v", err, chatID)
@@ -112,6 +113,24 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 		return fmt.Errorf("add chat %v users: %w", chatID, err)
 	}
 	slog.DebugContext(ctx, "chat users added")
+
+	userNamesMap, err := s.getUserLogins(ctx, append(addedUserIDs, requesterID))
+	if err != nil {
+		return fmt.Errorf("get added to chat %v user names to publish event: %w", chatID, err)
+	}
+
+	for _, addedUserID := range addedUserIDs {
+		s.dispatcher.Publish(event.Event{
+			Type:   event.CreateChatUser,
+			ChatID: chatID,
+			Payload: event.CreateUserEvent{
+				UserID:      requesterID,
+				UserName:    userNamesMap[requesterID],
+				NewUserID:   addedUserID,
+				NewUserName: userNamesMap[addedUserID],
+			},
+		})
+	}
 
 	return nil
 }
@@ -125,6 +144,22 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 			return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 		}
 		slog.DebugContext(ctx, "user deleted")
+
+		nameMap, err := s.getUserLogins(ctx, []uuid.UUID{requesterID})
+		if err != nil {
+			return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
+		}
+
+		s.dispatcher.Publish(event.Event{
+			Type:   event.DeleteChatUser,
+			ChatID: chatID,
+			Payload: event.DeleteUserEvent{
+				UserID:          requesterID,
+				UserName:        nameMap[requesterID],
+				DeletedUserID:   requesterID,
+				DeletedUserName: nameMap[requesterID],
+			},
+		})
 
 		return nil
 	}
@@ -165,6 +200,22 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 		return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 	}
 	slog.DebugContext(ctx, "user deleted")
+
+	nameMap, err := s.getUserLogins(ctx, []uuid.UUID{requesterID, userID})
+	if err != nil {
+		return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
+	}
+
+	s.dispatcher.Publish(event.Event{
+		Type:   event.DeleteChatUser,
+		ChatID: chatID,
+		Payload: event.DeleteUserEvent{
+			UserID:          requesterID,
+			UserName:        nameMap[requesterID],
+			DeletedUserID:   userID,
+			DeletedUserName: nameMap[userID],
+		},
+	})
 
 	return nil
 }
