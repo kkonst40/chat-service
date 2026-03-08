@@ -155,9 +155,9 @@ func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, user
 
 }
 
-func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) error {
+func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) ([]uuid.UUID, error) {
 	if len(userIDs) == 0 {
-		return nil
+		return make([]uuid.UUID, 0), nil
 	}
 
 	slog.DebugContext(ctx, "adding chat users in DB", "chatID", chatID, "userIDs", userIDs)
@@ -176,20 +176,31 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 		args = append(args, userID, chatID, model.Common)
 	}
 
-	queryBuilder.WriteString(" ON CONFLICT (id, chat_id) DO NOTHING")
+	queryBuilder.WriteString(" ON CONFLICT (id, chat_id) DO NOTHING RETURNING id")
 
-	if _, err := r.db.ExecContext(ctx, queryBuilder.String(), args...); err != nil {
+	rows, err := r.db.QueryContext(ctx, queryBuilder.String(), args...)
+	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23503" && pgErr.ConstraintName == "fk_users_chat" {
-				return errs.ErrChatNotFound
+				return nil, errs.ErrChatNotFound
 			}
 		}
 
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+	}
+	defer rows.Close()
+
+	insertedIDs := make([]uuid.UUID, 0, len(userIDs))
+	for rows.Next() {
+		var returnedID uuid.UUID
+		if err := rows.Scan(&returnedID); err != nil {
+			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		}
+		insertedIDs = append(insertedIDs, returnedID)
 	}
 
-	return nil
+	return insertedIDs, nil
 }
 
 func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error {
