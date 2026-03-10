@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/kkonst40/ichat/internal/auth"
+	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/middleware"
+	"github.com/kkonst40/ichat/internal/ratelimiter"
 )
 
 func NewRouter(
@@ -16,7 +18,8 @@ func NewRouter(
 	messageHandler *handler.MessageHandler,
 	wsHandler *handler.WSHandler,
 	tokenValidator *auth.TokenValidator,
-	cookieName string,
+	rateLimiter *ratelimiter.IPRateLimiter,
+	cfg *config.Config,
 ) http.Handler {
 	router := http.NewServeMux()
 
@@ -59,14 +62,15 @@ func NewRouter(
 	httpStack := middleware.CreateStack(
 		middleware.Recovery,
 		middleware.Logger,
-		middleware.Timeout(3*time.Second),
-		middleware.Auth(tokenValidator, cookieName),
+		middleware.LimitRate(rateLimiter),
+		middleware.Timeout(time.Duration(cfg.RequestTimeoutSeconds)*time.Second),
+		middleware.Auth(tokenValidator, cfg.JWT.CookieName),
 	)
 
 	wsStack := middleware.CreateStack(
 		middleware.Recovery,
 		middleware.Logger,
-		middleware.Auth(tokenValidator, cookieName),
+		middleware.Auth(tokenValidator, cfg.JWT.CookieName),
 	)
 
 	mainRouter := http.NewServeMux()

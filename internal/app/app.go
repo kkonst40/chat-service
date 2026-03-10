@@ -16,6 +16,7 @@ import (
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/hub"
 	"github.com/kkonst40/ichat/internal/integration/sso"
+	"github.com/kkonst40/ichat/internal/ratelimiter"
 	"github.com/kkonst40/ichat/internal/repository/postgres"
 	"github.com/kkonst40/ichat/internal/service"
 	"github.com/redis/go-redis/v9"
@@ -43,7 +44,7 @@ func New(cfg *config.Config) (*App, error) {
 	}
 	slog.Info("Successful connection to the Redis")
 
-	userLoginCache := cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTL)*time.Hour)
+	userLoginCache := cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTLHours)*time.Hour)
 
 	var (
 		userRepo    = postgres.NewUserRepository(db)
@@ -66,6 +67,7 @@ func New(cfg *config.Config) (*App, error) {
 		wsHub          = hub.NewHub()
 		dispatcher     = dispatcher.New(wsHub, userRepo)
 		tokenValidator = auth.NewTokenValidator(cfg)
+		rateLimiter    = ratelimiter.New(cfg)
 
 		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, userLoginCache)
 		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
@@ -88,7 +90,8 @@ func New(cfg *config.Config) (*App, error) {
 		messageHandler,
 		wsHandler,
 		tokenValidator,
-		cfg.JWT.CookieName,
+		rateLimiter,
+		cfg,
 	)
 
 	server := &http.Server{

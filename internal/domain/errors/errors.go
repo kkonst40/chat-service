@@ -17,6 +17,7 @@ var (
 	ErrDatabase        = errors.New("DB error")
 	ErrChatConnection  = errors.New("chat connection error")
 	ErrExternalService = errors.New("external service error")
+	ErrTooManyRequests = errors.New("too many requests")
 
 	ErrInvalidAction = errors.New("unknown action")
 )
@@ -67,6 +68,10 @@ func MapError(err error) (int, ErrResp) {
 	case errors.Is(err, ErrChatConnection):
 		statusCode = http.StatusForbidden
 		msg = "Chat connection error"
+
+	case errors.Is(err, ErrTooManyRequests):
+		statusCode = http.StatusTooManyRequests
+		msg = "Too many requests"
 
 	default:
 		statusCode = http.StatusInternalServerError
