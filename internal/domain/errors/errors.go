@@ -15,8 +15,11 @@ var (
 	ErrForbidden       = errors.New("access forbidden")
 	ErrUnauthorized    = errors.New("unauthorized")
 	ErrDatabase        = errors.New("DB error")
-	ErrChatConnection  = errors.New("chat connection error")
 	ErrExternalService = errors.New("external service error")
+
+	ErrTooManyRequests        = errors.New("too many requests")
+	ErrChatConnection         = errors.New("chat connection error")
+	ErrTooManyOpenConnections = errors.New("too many open connections")
 
 	ErrInvalidAction = errors.New("unknown action")
 )
@@ -67,6 +70,14 @@ func MapError(err error) (int, ErrResp) {
 	case errors.Is(err, ErrChatConnection):
 		statusCode = http.StatusForbidden
 		msg = "Chat connection error"
+
+	case errors.Is(err, ErrTooManyRequests):
+		statusCode = http.StatusTooManyRequests
+		msg = "Too many requests"
+
+	case errors.Is(err, ErrTooManyOpenConnections):
+		statusCode = http.StatusTooManyRequests
+		msg = "Too many active connections from client IP"
 
 	default:
 		statusCode = http.StatusInternalServerError

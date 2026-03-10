@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
@@ -24,6 +26,20 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 	slog.ErrorContext(ctx, err.Error())
 
 	WriteJSON(ctx, w, statusCode, resp)
+}
+
+func GetRealIP(r *http.Request) string {
+	xForwardedFor := r.Header.Get("X-Forwarded-For")
+	if xForwardedFor != "" {
+		ips := strings.Split(xForwardedFor, ",")
+		return strings.TrimSpace(ips[0])
+	}
+
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }
 
 func bindJSON(r *http.Request, dst any, validate *validator.Validate) error {

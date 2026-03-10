@@ -31,14 +31,24 @@ type RedisConfig struct {
 	DB       int    `json:"db"`
 }
 
+type RateLimiterConfig struct {
+	Limit                  int
+	MaxBurst               int
+	CleanupIntervalSeconds int
+	IPIdleLifetimeSeconds  int
+}
+
 type Config struct {
-	Env           string      `json:"env"`
-	Port          string      `json:"port"`
-	SSOAddress    string      `json:"ssoAddress"`
-	JWT           JWTConfig   `json:"jwt"`
-	DB            DBConfig    `json:"db"`
-	Redis         RedisConfig `json:"redis"`
-	LoginCacheTTL int         `json:"loginCacheTTL"`
+	Env                   string            `json:"env"`
+	Port                  string            `json:"port"`
+	SSOAddress            string            `json:"ssoAddress"`
+	RequestTimeoutSeconds int               `json:"requestTimeout"`
+	LoginCacheTTLHours    int               `json:"loginCacheTTL"`
+	WSConnsPerIP          int               `json:"wsConnsPerIP"`
+	JWT                   JWTConfig         `json:"jwt"`
+	DB                    DBConfig          `json:"db"`
+	Redis                 RedisConfig       `json:"redis"`
+	RateLimiter           RateLimiterConfig `json:"rateLimiter"`
 }
 
 func Load() (*Config, error) {
@@ -101,9 +111,12 @@ func loadConfigEnv() (*Config, error) {
 	}
 
 	cfg := &Config{
-		Env:        getEnvString("ENV"),
-		Port:       getEnvString("PORT"),
-		SSOAddress: getEnvString("SSO_URL"),
+		Env:                   getEnvString("ENV"),
+		Port:                  getEnvString("PORT"),
+		SSOAddress:            getEnvString("SSO_URL"),
+		RequestTimeoutSeconds: getEnvInt("REQUEST_TIMEOUT"),
+		LoginCacheTTLHours:    getEnvInt("LOGIN_CACHE_TTL"),
+		WSConnsPerIP:          getEnvInt("WSCONNS_PER_IP"),
 		JWT: JWTConfig{
 			SecretKey:  getEnvString("JWT_SECRET"),
 			Issuer:     getEnvString("JWT_ISSUER"),
@@ -123,7 +136,12 @@ func loadConfigEnv() (*Config, error) {
 			Password: getEnvString("REDIS_PASSWORD"),
 			DB:       getEnvInt("REDIS_DB"),
 		},
-		LoginCacheTTL: getEnvInt("LOGIN_CACHE_TTL"),
+		RateLimiter: RateLimiterConfig{
+			Limit:                  getEnvInt("IP_RATE_LIMIT"),
+			MaxBurst:               getEnvInt("IP_RATE_MAX_BURST"),
+			CleanupIntervalSeconds: getEnvInt("IP_RATE_CLEANUP_INTERVAL"),
+			IPIdleLifetimeSeconds:  getEnvInt("IP_RATE_IDLE_LIFETIME"),
+		},
 	}
 	if errMissing != nil {
 		errResult = errMissing
