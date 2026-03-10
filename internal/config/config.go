@@ -44,6 +44,7 @@ type Config struct {
 	SSOAddress            string            `json:"ssoAddress"`
 	RequestTimeoutSeconds int               `json:"requestTimeout"`
 	LoginCacheTTLHours    int               `json:"loginCacheTTL"`
+	WSConnsPerIP          int               `json:"wsConnsPerIP"`
 	JWT                   JWTConfig         `json:"jwt"`
 	DB                    DBConfig          `json:"db"`
 	Redis                 RedisConfig       `json:"redis"`
@@ -115,6 +116,7 @@ func loadConfigEnv() (*Config, error) {
 		SSOAddress:            getEnvString("SSO_URL"),
 		RequestTimeoutSeconds: getEnvInt("REQUEST_TIMEOUT"),
 		LoginCacheTTLHours:    getEnvInt("LOGIN_CACHE_TTL"),
+		WSConnsPerIP:          getEnvInt("WSCONNS_PER_IP"),
 		JWT: JWTConfig{
 			SecretKey:  getEnvString("JWT_SECRET"),
 			Issuer:     getEnvString("JWT_ISSUER"),

@@ -8,8 +8,8 @@ import (
 	"github.com/kkonst40/ichat/internal/auth"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/handler"
+	"github.com/kkonst40/ichat/internal/limit/ratelimiter"
 	"github.com/kkonst40/ichat/internal/middleware"
-	"github.com/kkonst40/ichat/internal/ratelimiter"
 )
 
 func NewRouter(
@@ -70,6 +70,7 @@ func NewRouter(
 	wsStack := middleware.CreateStack(
 		middleware.Recovery,
 		middleware.Logger,
+		middleware.LimitRate(rateLimiter),
 		middleware.Auth(tokenValidator, cfg.JWT.CookieName),
 	)
 

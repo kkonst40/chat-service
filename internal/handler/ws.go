@@ -1,22 +1,27 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/kkonst40/ichat/internal/auth"
+	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/hub"
+	"github.com/kkonst40/ichat/internal/limit/conntracker"
 )
 
 type WSHandler struct {
-	hub *hub.Hub
+	hub         *hub.Hub
+	connTracker *conntracker.ConnTracker
 }
 
-func NewWSHandler(hub *hub.Hub) *WSHandler {
+func NewWSHandler(hub *hub.Hub, connTracker *conntracker.ConnTracker) *WSHandler {
 	return &WSHandler{
-		hub: hub,
+		hub:         hub,
+		connTracker: connTracker,
 	}
 }
 
@@ -45,6 +50,14 @@ var upgrader = websocket.Upgrader{
 func (h *WSHandler) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
+
+	clientIP := GetRealIP(r)
+
+	if !h.connTracker.Acquire(clientIP) {
+		WriteError(ctx, w, fmt.Errorf("%w: from IP %s", errs.ErrTooManyOpenConnections, clientIP))
+		return
+	}
+	defer h.connTracker.Release(clientIP)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
