@@ -35,10 +35,10 @@ func NewRouter(
 	router.HandleFunc("PUT /chatusers/{chatId}/{userId}", userHandler.UpdateChatUserRole)
 	router.HandleFunc("DELETE /chatusers/{chatId}/{userId}", userHandler.DeleteChatUser)
 
-	router.HandleFunc("GET /chatmessages/{chatId}", messageHandler.GetChatMessages)
-	router.HandleFunc("POST /chatmessages/{chatId}", messageHandler.CreateMessage)
-	router.HandleFunc("PUT /chatmessages/{msgId}", messageHandler.UpdateMessage)
-	router.HandleFunc("DELETE /chatmessages/{msgId}", messageHandler.DeleteMessage)
+	router.HandleFunc("GET /chats/{chatId}/messages", messageHandler.GetChatMessages)
+	router.HandleFunc("POST /chats/{chatId}/messages", messageHandler.CreateMessage)
+	router.HandleFunc("PUT /messages/{msgId}", messageHandler.UpdateMessage)
+	router.HandleFunc("DELETE /messages/{msgId}", messageHandler.DeleteMessage)
 
 	tmpl := template.Must(template.ParseFiles("static/index.html"))
 
