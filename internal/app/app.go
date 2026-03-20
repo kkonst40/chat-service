@@ -97,7 +97,7 @@ func New(cfg *config.Config) (*App, error) {
 	)
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + cfg.Port,
 		Handler: router,
 	}
 
