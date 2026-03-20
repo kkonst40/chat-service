@@ -26,7 +26,7 @@ services:
     restart: always
     command: [
       "redis-server",
-      "--maxmemory", "256mb",
+      "--maxmemory", "512mb",
       "--maxmemory-policy", "allkeys-lru"
     ]
     ports:
@@ -36,7 +36,7 @@ services:
 
   chatapp:
     build:
-      context: ./ichat
+      context: .
       dockerfile: Dockerfile
     container_name: chat_app
     restart: on-failure
