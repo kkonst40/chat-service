@@ -253,7 +253,7 @@
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            socket = new WebSocket(`${protocol}//${window.location.host}/connect`);
+            socket = new WebSocket(`${protocol}//${window.location.host}/chat/connect`);
 
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
