@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -61,6 +62,7 @@ func (h *WSHandler) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		slog.ErrorContext(ctx, err.Error())
 		return
 	}
 
