@@ -31,6 +31,11 @@ type RedisConfig struct {
 	DB       int    `json:"db"`
 }
 
+type KafkaConfig struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+}
+
 type RateLimiterConfig struct {
 	Limit                  int
 	MaxBurst               int
@@ -48,6 +53,7 @@ type Config struct {
 	JWT                   JWTConfig         `json:"jwt"`
 	DB                    DBConfig          `json:"db"`
 	Redis                 RedisConfig       `json:"redis"`
+	Kafka                 KafkaConfig       `json:"kafka"`
 	RateLimiter           RateLimiterConfig `json:"rateLimiter"`
 }
 
@@ -135,6 +141,10 @@ func loadConfigEnv() (*Config, error) {
 			Port:     getEnvString("REDIS_PORT"),
 			Password: getEnvString("REDIS_PASSWORD"),
 			DB:       getEnvInt("REDIS_DB"),
+		},
+		Kafka: KafkaConfig{
+			Host: getEnvString("KAFKA_HOST"),
+			Port: getEnvString("KAFKA_PORT"),
 		},
 		RateLimiter: RateLimiterConfig{
 			Limit:                  getEnvInt("IP_RATE_LIMIT"),

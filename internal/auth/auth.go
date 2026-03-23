@@ -21,9 +21,9 @@ func ContextWithUserID(ctx context.Context, userID uuid.UUID) context.Context {
 }
 
 type UserClaims struct {
-	ID       uuid.UUID `json:"id"`
-	UserName string    `json:"userName"`
-	TokenID  uuid.UUID `json:"tokenId"`
+	ID        uuid.UUID `json:"id"`
+	UserName  string    `json:"userName"`
+	SessionID uuid.UUID `json:"sid"`
 	jwt.RegisteredClaims
 }
 

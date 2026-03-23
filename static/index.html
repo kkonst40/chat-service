@@ -253,7 +253,7 @@
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            socket = new WebSocket(`${protocol}//${window.location.host}/connect`);
+            socket = new WebSocket(`${protocol}//${window.location.host}/chat/connect`);
 
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
@@ -303,9 +303,9 @@
         }
 
         async function loadChats() {
-            let url = '/chats';
+            let url = 'chats';
             if (currentChatFilter === 'personal' || currentChatFilter === 'group') {
-                url = `/chats?filter=${currentChatFilter}`;
+                url = `chats?filter=${currentChatFilter}`;
             }
             const data = await apiRequest(url);
             if (data && data.chats) {
@@ -359,7 +359,7 @@
             document.getElementById('input-area').style.display = 'flex';
             renderChats();
 
-            const data = await apiRequest(`/chatmessages/${chatId}`);
+            const data = await apiRequest(`chats/${chatId}/messages`);
             const messagesDiv = document.getElementById('messages');
             messagesDiv.innerHTML = '';
 
@@ -381,10 +381,10 @@
             input.value = '';
 
             if (editingMessageId) {
-                await apiRequest(`/chatmessages/${editingMessageId}`, 'PUT', { text });
+                await apiRequest(`messages/${editingMessageId}`, 'PUT', { text });
                 exitEditMode();
             } else {
-                await apiRequest(`/chatmessages/${currentChatId}`, 'POST', { text });
+                await apiRequest(`chats/${currentChatId}/messages`, 'POST', { text });
             }
         }
 
@@ -406,7 +406,7 @@
         }
 
         async function deleteMessage(messageId) {
-            await apiRequest(`/chatmessages/${messageId}`, 'DELETE');
+            await apiRequest(`messages/${messageId}`, 'DELETE');
         }
 
         function appendMessage(payload) {
@@ -488,7 +488,7 @@
 
                 if (selected.value === 'personal') {
                     const body = { userName: rawUsers[0] };
-                    response = await fetch('/chats/personal', {
+                    response = await fetch('chats/personal', {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
@@ -502,7 +502,7 @@
                     }
 
                     const body = { name: chatName, userNames: rawUsers };
-                    response = await fetch('/chats/group', {
+                    response = await fetch('chats/group', {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },

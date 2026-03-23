@@ -29,6 +29,10 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 }
 
 func GetRealIP(r *http.Request) string {
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return realIP
+	}
+
 	xForwardedFor := r.Header.Get("X-Forwarded-For")
 	if xForwardedFor != "" {
 		ips := strings.Split(xForwardedFor, ",")

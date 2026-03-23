@@ -37,7 +37,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		err = application.Run()
+		err = application.Run(appCtx)
 		if err != nil {
 			slog.Error("Application running", "error", err.Error())
 			slog.Info("Server exiting")
