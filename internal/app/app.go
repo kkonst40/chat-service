@@ -12,6 +12,7 @@ import (
 	"github.com/kkonst40/ichat/internal/cache"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/dispatcher"
+	"github.com/kkonst40/ichat/internal/eventbus"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
 	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/hub"
@@ -28,8 +29,9 @@ import (
 )
 
 type App struct {
-	server *http.Server
-	db     *sql.DB
+	server        *http.Server
+	eventConsumer *eventbus.Consumer
+	db            *sql.DB
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -44,8 +46,6 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	slog.Info("Successful connection to the Redis")
-
-	userLoginCache := cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTLHours)*time.Hour)
 
 	var (
 		userRepo    = postgres.NewUserRepository(db)
@@ -64,6 +64,7 @@ func New(cfg *config.Config) (*App, error) {
 	}
 
 	var (
+		userLoginCache = cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTLHours)*time.Hour)
 		ssoClient      = sso.NewSSOClient(pb.NewUserServiceClient(conn))
 		wsHub          = hub.NewHub()
 		dispatcher     = dispatcher.New(wsHub, userRepo)
@@ -71,6 +72,10 @@ func New(cfg *config.Config) (*App, error) {
 		rateLimiter    = ratelimiter.New(cfg)
 		connTracker    = conntracker.New(cfg.WSConnsPerIP)
 
+		eventConsumer = eventbus.NewConsumer(cfg, userLoginCache)
+	)
+
+	var (
 		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, userLoginCache)
 		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
 		messageService = service.NewMessageService(messageRepo, chatService, userService, dispatcher, 4096)
@@ -104,21 +109,37 @@ func New(cfg *config.Config) (*App, error) {
 	slog.Info("HTTP server is initialized")
 
 	return &App{
-		server: server,
-		db:     db,
+		server:        server,
+		eventConsumer: eventConsumer,
+		db:            db,
 	}, nil
 }
 
-func (a *App) Run() error {
-	if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("HTTP serve error: %w", err)
-	}
-	return nil
+func (a *App) Run(ctx context.Context) error {
+	errChan := make(chan error, 2)
+
+	go func() {
+		if err := a.eventConsumer.Start(ctx); err != nil {
+			errChan <- fmt.Errorf("Event bus consumer error: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errChan <- fmt.Errorf("HTTP serve error: %w", err)
+		}
+	}()
+
+	return <-errChan
 }
 
 func (a *App) Shutdown(ctx context.Context) {
 	if err := a.server.Shutdown(ctx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err.Error())
+	}
+
+	if err := a.eventConsumer.Close(); err != nil {
+		slog.Error("Event consumer close error", "error", err.Error())
 	}
 
 	if err := a.db.Close(); err != nil {
