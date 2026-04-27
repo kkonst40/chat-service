@@ -8,19 +8,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kkonst40/ichat/internal/auth"
-	"github.com/kkonst40/ichat/internal/cache"
-	"github.com/kkonst40/ichat/internal/config"
-	"github.com/kkonst40/ichat/internal/dispatcher"
-	"github.com/kkonst40/ichat/internal/eventbus"
-	pb "github.com/kkonst40/ichat/internal/gen/user"
-	"github.com/kkonst40/ichat/internal/handler"
-	"github.com/kkonst40/ichat/internal/hub"
-	"github.com/kkonst40/ichat/internal/integration/sso"
-	"github.com/kkonst40/ichat/internal/limit/conntracker"
-	"github.com/kkonst40/ichat/internal/limit/ratelimiter"
-	"github.com/kkonst40/ichat/internal/repository/postgres"
-	"github.com/kkonst40/ichat/internal/service"
+	"github.com/kkonst40/chat-service/internal/api"
+	"github.com/kkonst40/chat-service/internal/api/handler"
+	"github.com/kkonst40/chat-service/internal/api/limit/conntracker"
+	"github.com/kkonst40/chat-service/internal/api/limit/ratelimiter"
+	"github.com/kkonst40/chat-service/internal/config"
+	pb "github.com/kkonst40/chat-service/internal/gen/user"
+	"github.com/kkonst40/chat-service/internal/hub"
+	"github.com/kkonst40/chat-service/internal/repository/postgres"
+	"github.com/kkonst40/chat-service/internal/service"
+	"github.com/kkonst40/chat-service/internal/service/auth"
+	"github.com/kkonst40/chat-service/internal/service/cache"
+	"github.com/kkonst40/chat-service/internal/service/dispatcher"
+	"github.com/kkonst40/chat-service/internal/service/eventbus"
+	"github.com/kkonst40/chat-service/internal/service/integration/sso"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -65,7 +66,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	var (
 		userLoginCache = cache.NewRedisUserLoginCache(redisClient, time.Duration(cfg.LoginCacheTTLHours)*time.Hour)
-		ssoClient      = sso.NewSSOClient(pb.NewUserServiceClient(conn))
+		ssoClient      = sso.NewClient(pb.NewUserServiceClient(conn))
 		wsHub          = hub.NewHub()
 		dispatcher     = dispatcher.New(wsHub, userRepo)
 		tokenValidator = auth.NewTokenValidator(cfg)
@@ -91,7 +92,7 @@ func New(cfg *config.Config) (*App, error) {
 	)
 	slog.Info("Handlers are initialized")
 
-	router := NewRouter(
+	router := api.NewRouter(
 		chatHandler,
 		userHandler,
 		messageHandler,

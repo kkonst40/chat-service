@@ -6,9 +6,8 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type ChatRepository struct {
@@ -27,7 +26,7 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 
 	chat, ok := r.db.chats[chatID]
 	if !ok {
-		return nil, errs.ErrChatNotFound
+		return nil, repository.ErrNotFound
 	}
 
 	return chat, nil
@@ -71,7 +70,7 @@ func (r *ChatRepository) CreateGroupChat(ctx context.Context, chat *model.Chat, 
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chat.ID]; ok {
-		return errs.ErrDatabase
+		return repository.ErrDatabase
 	}
 	r.db.chats[chat.ID] = chat
 
@@ -97,7 +96,7 @@ func (r *ChatRepository) CreatePersonalChat(ctx context.Context, chat *model.Cha
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chat.ID]; ok {
-		return errs.ErrDatabase
+		return repository.ErrDatabase
 	}
 	r.db.chats[chat.ID] = chat
 
@@ -121,7 +120,7 @@ func (r *ChatRepository) UpdateChatName(ctx context.Context, chatID uuid.UUID, n
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.chats[chatID]; !ok {
-		return errs.ErrChatNotFound
+		return repository.ErrNotFound
 	}
 	r.db.chats[chatID].Name = name
 
@@ -207,5 +206,3 @@ func (r *ChatRepository) ChatExists(ctx context.Context, chatID uuid.UUID) (bool
 
 	return false, nil
 }
-
-var _ repository.ChatRepository = (*ChatRepository)(nil)

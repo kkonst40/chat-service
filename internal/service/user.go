@@ -8,30 +8,41 @@ import (
 	"maps"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/dispatcher"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/event"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/integration/sso"
-	"github.com/kkonst40/ichat/internal/repository"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/domain/event"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/repository"
+	"github.com/kkonst40/chat-service/internal/service/dispatcher"
+	"github.com/kkonst40/chat-service/internal/service/integration/sso"
 )
+
+type UserService struct {
+	userRepository UserRepository
+	dispatcher     *dispatcher.Dispatcher
+	ssoClient      *sso.Service
+	loginCache     UserLoginCache
+}
 
 type UserLoginCache interface {
 	GetUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
 	SetUserLogins(ctx context.Context, logins map[uuid.UUID]string) error
 }
 
-type UserService struct {
-	userRepository repository.UserRepository
-	dispatcher     *dispatcher.Dispatcher
-	ssoClient      *sso.SSOService
-	loginCache     UserLoginCache
+type UserRepository interface {
+	GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error)
+	GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error)
+	GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error)
+	GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error)
+	AddChatUsers(ctx context.Context, chatID uuid.UUID, userIDs []uuid.UUID) ([]uuid.UUID, error)
+	DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) error
+	UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role) error
+	UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error)
 }
 
 func NewUserService(
-	userRepository repository.UserRepository,
+	userRepository UserRepository,
 	dispatcher *dispatcher.Dispatcher,
-	ssoClient *sso.SSOService,
+	ssoClient *sso.Service,
 	loginCache UserLoginCache,
 ) *UserService {
 	return &UserService{
@@ -107,8 +118,8 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 
 	addedUserIDs, err := s.userRepository.AddChatUsers(ctx, chatID, userIDs)
 	if err != nil {
-		if errors.Is(err, errs.ErrChatNotFound) {
-			return fmt.Errorf("%w: ID %v", err, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: ID %v", errs.ErrChatNotFound, chatID)
 		}
 		return fmt.Errorf("add chat %v users: %w", chatID, err)
 	}
@@ -179,8 +190,8 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
-		if errors.Is(err, errs.ErrUserNotFound) {
-			return fmt.Errorf("%w: user ID %v, chat ID %v", err, userID, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: user ID %v, chat ID %v", errs.ErrUserNotFound, userID, chatID)
 		}
 		return fmt.Errorf("get user %v to delete: %w", userID, err)
 	}
@@ -225,8 +236,8 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
 	if err != nil {
-		if errors.Is(err, errs.ErrUserNotFound) {
-			return fmt.Errorf("%w: user ID %v, chat ID %v", err, userID, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: user ID %v, chat ID %v", errs.ErrUserNotFound, userID, chatID)
 		}
 		return fmt.Errorf("get requester %v to perform role update: %w", requesterID, err)
 	}
@@ -255,8 +266,8 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 
 	err = s.userRepository.UpdateUserRole(ctx, chatID, userID, newRole)
 	if err != nil {
-		if errors.Is(err, errs.ErrUserNotFound) {
-			return fmt.Errorf("%w: user ID %v, chat ID %v", err, userID, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: user ID %v, chat ID %v", errs.ErrUserNotFound, userID, chatID)
 		}
 		return fmt.Errorf("update user %v role (to %v) in chat %v: %w", userID, newRole, chatID, err)
 	}
@@ -378,4 +389,18 @@ func (s *UserService) getUserIDs(ctx context.Context, userLogins []string) (map[
 		result[userInfo.Login] = userInfo.ID
 	}
 	return result, nil
+}
+
+func unique[T comparable](values []T) []T {
+	uniqueValues := make(map[T]struct{})
+	for _, value := range values {
+		uniqueValues[value] = struct{}{}
+	}
+
+	result := make([]T, 0, len(uniqueValues))
+	for value := range uniqueValues {
+		result = append(result, value)
+	}
+
+	return result
 }

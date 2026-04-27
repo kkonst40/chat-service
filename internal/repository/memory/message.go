@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type MessageRepository struct {
@@ -27,7 +26,7 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 
 	message, ok := r.db.messages[msgID]
 	if !ok {
-		return nil, errs.ErrMsgNotFound
+		return nil, repository.ErrNotFound
 	}
 
 	return message, nil
@@ -57,7 +56,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; ok {
-		return errs.ErrDatabase
+		return repository.ErrDatabase
 	}
 	r.db.messages[msg.ID] = msg
 	r.db.chats[msg.ChatID].LastMessageAt = time.Now()
@@ -70,7 +69,7 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 	defer r.db.mu.Unlock()
 
 	if _, ok := r.db.messages[msg.ID]; !ok {
-		return errs.ErrMsgNotFound
+		return repository.ErrNotFound
 	}
 	r.db.messages[msg.ID] = msg
 
@@ -85,5 +84,3 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 
 	return nil
 }
-
-var _ repository.MessageRepository = (*MessageRepository)(nil)

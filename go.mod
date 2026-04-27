@@ -1,4 +1,4 @@
-module github.com/kkonst40/ichat
+module github.com/kkonst40/chat-service
 
 go 1.25.5
 

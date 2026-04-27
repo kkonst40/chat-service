@@ -1,39 +1,36 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
 )
 
 type DBConfig struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	DBName   string `json:"dbname"`
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
 }
 
 type JWTConfig struct {
-	SecretKey  string `json:"secretKey"`
-	Issuer     string `json:"issuer"`
-	Audience   string `json:"audience"`
-	CookieName string `json:"cookieName"`
+	SecretKey  string
+	Issuer     string
+	Audience   string
+	CookieName string
 }
 
 type RedisConfig struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Password string `json:"password"`
-	DB       int    `json:"db"`
+	Host     string
+	Port     string
+	Password string
+	DB       int
 }
 
 type KafkaConfig struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
+	Host string
+	Port string
 }
 
 type RateLimiterConfig struct {
@@ -44,35 +41,20 @@ type RateLimiterConfig struct {
 }
 
 type Config struct {
-	Env                   string            `json:"env"`
-	Port                  string            `json:"port"`
-	SSOAddress            string            `json:"ssoAddress"`
-	RequestTimeoutSeconds int               `json:"requestTimeout"`
-	LoginCacheTTLHours    int               `json:"loginCacheTTL"`
-	WSConnsPerIP          int               `json:"wsConnsPerIP"`
-	JWT                   JWTConfig         `json:"jwt"`
-	DB                    DBConfig          `json:"db"`
-	Redis                 RedisConfig       `json:"redis"`
-	Kafka                 KafkaConfig       `json:"kafka"`
-	RateLimiter           RateLimiterConfig `json:"rateLimiter"`
+	Env                   string
+	Port                  string
+	SSOAddress            string
+	RequestTimeoutSeconds int
+	LoginCacheTTLHours    int
+	WSConnsPerIP          int
+	JWT                   JWTConfig
+	DB                    DBConfig
+	Redis                 RedisConfig
+	Kafka                 KafkaConfig
+	RateLimiter           RateLimiterConfig
 }
 
 func Load() (*Config, error) {
-	var cfg *Config
-	var err error
-	switch runtime.GOOS {
-	case "windows":
-		cfg, err = loadConfigJSON()
-	case "linux":
-		cfg, err = loadConfigEnv()
-	default:
-		return nil, fmt.Errorf("config loading error")
-	}
-
-	return cfg, err
-}
-
-func loadConfigEnv() (*Config, error) {
 	var (
 		errMissing error
 		errNotInt  error
@@ -132,9 +114,9 @@ func loadConfigEnv() (*Config, error) {
 		DB: DBConfig{
 			Host:     getEnvString("DB_HOST"),
 			Port:     getEnvString("DB_PORT"),
-			User:     getEnvString("DB_USER"),
-			Password: getEnvString("DB_PASSWORD"),
-			DBName:   getEnvString("DB_NAME"),
+			User:     getEnvString("POSTGRES_USER"),
+			Password: getEnvString("POSTGRES_PASSWORD"),
+			DBName:   getEnvString("POSTGRES_DB"),
 		},
 		Redis: RedisConfig{
 			Host:     getEnvString("REDIS_HOST"),
@@ -170,26 +152,4 @@ func loadConfigEnv() (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func loadConfigJSON() (*Config, error) {
-	exePath, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
-
-	currDir := filepath.Dir(exePath)
-	file, err := os.Open(filepath.Join(currDir, "config.json"))
-	if err != nil {
-		return nil, fmt.Errorf("json config file oppening error: %v", err)
-	}
-	defer file.Close()
-
-	var cfg Config
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("json config file reading error: %v", err)
-	}
-
-	return &cfg, nil
 }
