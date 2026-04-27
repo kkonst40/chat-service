@@ -1,7 +1,6 @@
 package app
 
 import (
-	"html/template"
 	"net/http"
 	"time"
 
@@ -39,25 +38,6 @@ func NewRouter(
 	router.HandleFunc("POST /chats/{chatId}/messages", messageHandler.CreateMessage)
 	router.HandleFunc("PUT /messages/{msgId}", messageHandler.UpdateMessage)
 	router.HandleFunc("DELETE /messages/{msgId}", messageHandler.DeleteMessage)
-
-	tmpl := template.Must(template.ParseFiles("static/index.html"))
-
-	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		userID := auth.GetUserID(ctx)
-
-		data := struct {
-			UserID string
-		}{
-			UserID: userID.String(),
-		}
-
-		tmpl.Execute(w, data)
-	})
-
-	// router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-	// 	http.ServeFile(w, r, "static/index.html")
-	// })
 
 	httpStack := middleware.CreateStack(
 		middleware.Recovery,

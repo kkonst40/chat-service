@@ -22,8 +22,6 @@ func Auth(validator *auth.TokenValidator, cookieName string) Middleware {
 				return
 			}
 
-			slog.DebugContext(ctx, "", "token", token.Value)
-
 			userID, err := validator.ValidateToken(token.Value)
 			if err != nil {
 				handler.WriteError(ctx, w, fmt.Errorf("%w: token validation error: %w", errs.ErrUnauthorized, err))
