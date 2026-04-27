@@ -1,14 +1,14 @@
-package app
+package api
 
 import (
 	"net/http"
 	"time"
 
+	"github.com/kkonst40/ichat/internal/api/handler"
+	"github.com/kkonst40/ichat/internal/api/middleware"
 	"github.com/kkonst40/ichat/internal/auth"
 	"github.com/kkonst40/ichat/internal/config"
-	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/limit/ratelimiter"
-	"github.com/kkonst40/ichat/internal/middleware"
 )
 
 func NewRouter(

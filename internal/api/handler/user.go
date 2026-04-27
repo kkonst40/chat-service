@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/kkonst40/ichat/internal/api/dto"
 	"github.com/kkonst40/ichat/internal/auth"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
 	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/dto"
 	"github.com/kkonst40/ichat/internal/service"
 )
 

@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kkonst40/ichat/internal/api"
+	"github.com/kkonst40/ichat/internal/api/handler"
 	"github.com/kkonst40/ichat/internal/auth"
 	"github.com/kkonst40/ichat/internal/cache"
 	"github.com/kkonst40/ichat/internal/config"
 	"github.com/kkonst40/ichat/internal/dispatcher"
 	"github.com/kkonst40/ichat/internal/eventbus"
 	pb "github.com/kkonst40/ichat/internal/gen/user"
-	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/hub"
 	"github.com/kkonst40/ichat/internal/integration/sso"
 	"github.com/kkonst40/ichat/internal/limit/conntracker"
@@ -91,7 +92,7 @@ func New(cfg *config.Config) (*App, error) {
 	)
 	slog.Info("Handlers are initialized")
 
-	router := NewRouter(
+	router := api.NewRouter(
 		chatHandler,
 		userHandler,
 		messageHandler,

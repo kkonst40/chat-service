@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/kkonst40/ichat/internal/api/handler"
 	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/handler"
 	"github.com/kkonst40/ichat/internal/limit/ratelimiter"
 )
 
