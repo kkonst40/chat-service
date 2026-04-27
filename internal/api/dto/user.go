@@ -2,7 +2,7 @@ package dto
 
 import (
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/domain/model"
 )
 
 type GetUserResponse struct {

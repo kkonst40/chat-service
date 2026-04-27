@@ -7,11 +7,11 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/api/dto"
-	"github.com/kkonst40/ichat/internal/auth"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/service"
+	"github.com/kkonst40/chat-service/internal/api/dto"
+	"github.com/kkonst40/chat-service/internal/auth"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/service"
 )
 
 type UserHandler struct {

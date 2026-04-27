@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	pb "github.com/kkonst40/ichat/internal/gen/user"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	pb "github.com/kkonst40/chat-service/internal/gen/user"
 )
 
 type SSOService struct {

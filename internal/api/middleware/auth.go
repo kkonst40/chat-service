@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/api/handler"
-	"github.com/kkonst40/ichat/internal/auth"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/api/handler"
+	"github.com/kkonst40/chat-service/internal/auth"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 )
 
 func Auth(validator *auth.TokenValidator, cookieName string) Middleware {

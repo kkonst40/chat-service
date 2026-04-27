@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/kkonst40/ichat/internal/api/handler"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/limit/ratelimiter"
+	"github.com/kkonst40/chat-service/internal/api/handler"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/limit/ratelimiter"
 )
 
 func LimitRate(limiter *ratelimiter.IPRateLimiter) Middleware {

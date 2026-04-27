@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/repository"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type UserRepository struct {

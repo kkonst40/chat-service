@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 )
 
 func NewValidator() *validator.Validate {

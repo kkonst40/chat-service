@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/domain/event"
-	"github.com/kkonst40/ichat/internal/hub"
-	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/kkonst40/chat-service/internal/domain/event"
+	"github.com/kkonst40/chat-service/internal/hub"
+	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type Dispatcher struct {

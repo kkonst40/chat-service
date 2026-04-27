@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kkonst40/ichat/internal/app"
-	"github.com/kkonst40/ichat/internal/config"
-	"github.com/kkonst40/ichat/internal/logger"
+	"github.com/kkonst40/chat-service/internal/app"
+	"github.com/kkonst40/chat-service/internal/config"
+	"github.com/kkonst40/chat-service/internal/logger"
 )
 
 func main() {

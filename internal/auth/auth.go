@@ -5,7 +5,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/chat-service/internal/config"
 )
 
 type ctxKey struct{}

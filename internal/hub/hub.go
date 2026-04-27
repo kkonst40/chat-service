@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/domain/event"
+	"github.com/kkonst40/chat-service/internal/domain/event"
 )
 
 type Hub struct {

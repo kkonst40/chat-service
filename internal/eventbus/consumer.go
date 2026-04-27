@@ -7,7 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/chat-service/internal/config"
 	"github.com/segmentio/kafka-go"
 )
 

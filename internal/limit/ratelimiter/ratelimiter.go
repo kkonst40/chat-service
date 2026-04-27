@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kkonst40/ichat/internal/config"
+	"github.com/kkonst40/chat-service/internal/config"
 	"golang.org/x/time/rate"
 )
 

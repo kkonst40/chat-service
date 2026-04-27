@@ -6,9 +6,9 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/repository"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type ChatRepository struct {

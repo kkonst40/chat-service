@@ -8,12 +8,12 @@ import (
 	"maps"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/ichat/internal/dispatcher"
-	errs "github.com/kkonst40/ichat/internal/domain/errors"
-	"github.com/kkonst40/ichat/internal/domain/event"
-	"github.com/kkonst40/ichat/internal/domain/model"
-	"github.com/kkonst40/ichat/internal/integration/sso"
-	"github.com/kkonst40/ichat/internal/repository"
+	"github.com/kkonst40/chat-service/internal/dispatcher"
+	errs "github.com/kkonst40/chat-service/internal/domain/errors"
+	"github.com/kkonst40/chat-service/internal/domain/event"
+	"github.com/kkonst40/chat-service/internal/domain/model"
+	"github.com/kkonst40/chat-service/internal/integration/sso"
+	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type UserLoginCache interface {
