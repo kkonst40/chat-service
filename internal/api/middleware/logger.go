@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/chat-service/internal/logger"
+	"github.com/kkonst40/chat-service/internal/service/logger"
 )
 
 func Logger(next http.Handler) http.Handler {

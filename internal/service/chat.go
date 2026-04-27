@@ -8,21 +8,32 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/chat-service/internal/dispatcher"
 	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/domain/event"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
+	"github.com/kkonst40/chat-service/internal/service/dispatcher"
 )
 
 type ChatService struct {
-	chatRepository repository.ChatRepository
+	chatRepository ChatRepository
 	userService    *UserService
 	dispatcher     *dispatcher.Dispatcher
 }
 
+type ChatRepository interface {
+	GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error)
+	GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error)
+	CreateGroupChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID, userIDs []uuid.UUID) error
+	CreatePersonalChat(ctx context.Context, chat *model.Chat, userID1, userID2 uuid.UUID) error
+	UpdateChatName(ctx context.Context, chatID uuid.UUID, name string) error
+	DeleteChat(ctx context.Context, chatID uuid.UUID) error
+	DeletePersonalChat(ctx context.Context, userID1, userID2 uuid.UUID) error
+	ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error)
+}
+
 func NewChatService(
-	chatRepository repository.ChatRepository,
+	chatRepository ChatRepository,
 	userService *UserService,
 	dispatcher *dispatcher.Dispatcher,
 ) *ChatService {
@@ -40,8 +51,8 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Cha
 
 	chat, err := s.chatRepository.GetChat(ctx, chatID)
 	if err != nil {
-		if errors.Is(err, errs.ErrChatNotFound) {
-			return nil, fmt.Errorf("%w: id %v", err, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, fmt.Errorf("%w: id %v", errs.ErrChatNotFound, chatID)
 		}
 		return nil, fmt.Errorf("get chat %v: %w", chatID, err)
 	}
@@ -194,8 +205,8 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 
 	err := s.chatRepository.UpdateChatName(ctx, chatID, name)
 	if err != nil {
-		if errors.Is(err, errs.ErrChatNotFound) {
-			return fmt.Errorf("%w: ID %v", err, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: ID %v", errs.ErrChatNotFound, chatID)
 		}
 		return fmt.Errorf("update chat %v name: %w", chatID, err)
 	}

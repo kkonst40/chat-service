@@ -28,14 +28,14 @@ type UserClaims struct {
 }
 
 type TokenValidator struct {
-	secretKey string
+	secretKey []byte
 	issuer    string
 	audience  string
 }
 
 func NewTokenValidator(cfg *config.Config) *TokenValidator {
 	return &TokenValidator{
-		secretKey: cfg.JWT.SecretKey,
+		secretKey: []byte(cfg.JWT.SecretKey),
 		issuer:    cfg.JWT.Issuer,
 		audience:  cfg.JWT.Audience,
 	}
@@ -51,7 +51,7 @@ func (v *TokenValidator) ValidateToken(tokenString string) (uuid.UUID, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return []byte(v.secretKey), nil
+			return v.secretKey, nil
 		},
 		jwt.WithIssuer(v.issuer),
 		jwt.WithAudience(v.audience),

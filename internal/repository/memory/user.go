@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
 )
@@ -31,7 +30,7 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, user
 	key := key{UserID: userID, ChatID: chatID}
 	user, ok := r.db.users[key]
 	if !ok {
-		return nil, errs.ErrUserNotFound
+		return nil, repository.ErrNotFound
 	}
 
 	return user, nil
@@ -106,7 +105,7 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 	if _, ok := r.db.users[key]; ok {
 		r.db.users[key].Role = newRole
 	} else {
-		return errs.ErrUserNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -123,5 +122,3 @@ func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUI
 
 	return false, nil
 }
-
-var _ repository.UserRepository = (*UserRepository)(nil)

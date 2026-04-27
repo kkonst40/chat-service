@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/kkonst40/chat-service/internal/api/handler"
+	"github.com/kkonst40/chat-service/internal/api/limit/ratelimiter"
 	"github.com/kkonst40/chat-service/internal/api/middleware"
-	"github.com/kkonst40/chat-service/internal/auth"
 	"github.com/kkonst40/chat-service/internal/config"
-	"github.com/kkonst40/chat-service/internal/limit/ratelimiter"
+	"github.com/kkonst40/chat-service/internal/service/auth"
 )
 
 func NewRouter(

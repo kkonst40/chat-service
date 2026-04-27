@@ -10,7 +10,7 @@ import (
 
 	"github.com/kkonst40/chat-service/internal/app"
 	"github.com/kkonst40/chat-service/internal/config"
-	"github.com/kkonst40/chat-service/internal/logger"
+	"github.com/kkonst40/chat-service/internal/service/logger"
 )
 
 func main() {

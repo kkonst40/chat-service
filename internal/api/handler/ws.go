@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/kkonst40/chat-service/internal/auth"
+	"github.com/kkonst40/chat-service/internal/api/limit/conntracker"
 	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/hub"
-	"github.com/kkonst40/chat-service/internal/limit/conntracker"
+	"github.com/kkonst40/chat-service/internal/service/auth"
 )
 
 type WSHandler struct {

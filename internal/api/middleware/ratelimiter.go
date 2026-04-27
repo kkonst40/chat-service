@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/kkonst40/chat-service/internal/api/handler"
+	"github.com/kkonst40/chat-service/internal/api/limit/ratelimiter"
 	errs "github.com/kkonst40/chat-service/internal/domain/errors"
-	"github.com/kkonst40/chat-service/internal/limit/ratelimiter"
 )
 
 func LimitRate(limiter *ratelimiter.IPRateLimiter) Middleware {

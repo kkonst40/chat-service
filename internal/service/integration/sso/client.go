@@ -8,17 +8,17 @@ import (
 	pb "github.com/kkonst40/chat-service/internal/gen/user"
 )
 
-type SSOService struct {
+type Service struct {
 	client pb.UserServiceClient
 }
 
-func NewSSOClient(client pb.UserServiceClient) *SSOService {
-	return &SSOService{
+func NewClient(client pb.UserServiceClient) *Service {
+	return &Service{
 		client: client,
 	}
 }
 
-func (c *SSOService) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
+func (c *Service) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
 	idsStrings := make([]string, len(userIDs))
 	for i, id := range userIDs {
 		idsStrings[i] = id.String()
@@ -44,7 +44,7 @@ func (c *SSOService) ExistMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid
 	return existingIDs, nil
 }
 
-func (c *SSOService) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {
+func (c *Service) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([]model.UserInfo, error) {
 	idsStrings := make([]string, len(userIDs))
 	for i, id := range userIDs {
 		idsStrings[i] = id.String()
@@ -74,7 +74,7 @@ func (c *SSOService) GetUsersLogins(ctx context.Context, userIDs []uuid.UUID) ([
 	return result, nil
 }
 
-func (c *SSOService) GetUsersIDs(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
+func (c *Service) GetUsersIDs(ctx context.Context, userLogins []string) ([]model.UserInfo, error) {
 	resp, err := c.client.GetUsersIDs(ctx, &pb.GetUsersIDsRequest{
 		Logins: userLogins,
 	})

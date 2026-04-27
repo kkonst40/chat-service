@@ -8,23 +8,31 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kkonst40/chat-service/internal/dispatcher"
 	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/domain/event"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
+	"github.com/kkonst40/chat-service/internal/service/dispatcher"
 )
 
 type MessageService struct {
-	messageRepository repository.MessageRepository
+	messageRepository MessageRepository
 	chatService       *ChatService
 	userService       *UserService
 	dispatcher        *dispatcher.Dispatcher
 	textMaxLength     int
 }
 
+type MessageRepository interface {
+	GetMessage(ctx context.Context, msgID uuid.UUID) (*model.Message, error)
+	GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64) ([]model.Message, error)
+	CreateMessage(ctx context.Context, msg *model.Message) error
+	UpdateMessage(ctx context.Context, msg *model.Message) error
+	DeleteMessage(ctx context.Context, msgID uuid.UUID) error
+}
+
 func NewMessageService(
-	messageRepository repository.MessageRepository,
+	messageRepository MessageRepository,
 	chatService *ChatService,
 	userService *UserService,
 	dispatcher *dispatcher.Dispatcher,
@@ -100,8 +108,8 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	}
 
 	if err := s.messageRepository.CreateMessage(ctx, msg); err != nil {
-		if errors.Is(err, errs.ErrChatNotFound) {
-			return nil, fmt.Errorf("%w: ID %v", err, chatID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, fmt.Errorf("%w: ID %v", errs.ErrChatNotFound, chatID)
 		}
 
 		return nil, fmt.Errorf("create message: %w", err)
@@ -133,8 +141,8 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
-		if errors.Is(err, errs.ErrMsgNotFound) {
-			return fmt.Errorf("%w: ID %v", err, msgID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: ID %v", errs.ErrMsgNotFound, msgID)
 		}
 		return fmt.Errorf("get message %v to update: %w", msgID, err)
 	}
@@ -158,8 +166,8 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 
 	err = s.messageRepository.UpdateMessage(ctx, newMsg)
 	if err != nil {
-		if errors.Is(err, errs.ErrMsgNotFound) {
-			return fmt.Errorf("%w: ID %v", err, msgID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: ID %v", errs.ErrMsgNotFound, msgID)
 		}
 		return fmt.Errorf("update message %v: %w", msgID, err)
 	}
@@ -182,8 +190,8 @@ func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, req
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
 	if err != nil {
-		if errors.Is(err, errs.ErrMsgNotFound) {
-			return fmt.Errorf("%w: ID %v", err, msgID)
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("%w: ID %v", errs.ErrMsgNotFound, msgID)
 		}
 		return fmt.Errorf("get message %v to delete: %w", msgID, err)
 	}

@@ -6,17 +6,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/kkonst40/chat-service/internal/domain/event"
 	"github.com/kkonst40/chat-service/internal/hub"
-	"github.com/kkonst40/chat-service/internal/repository"
 )
 
 type Dispatcher struct {
 	WsHub    *hub.Hub
-	userRepo repository.UserRepository
+	userRepo UserRepository
+}
+
+type UserRepository interface {
+	GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error)
 }
 
 func New(
 	wsHub *hub.Hub,
-	userRepo repository.UserRepository,
+	userRepo UserRepository,
 ) *Dispatcher {
 	return &Dispatcher{
 		WsHub:    wsHub,

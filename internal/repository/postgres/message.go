@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
 )
@@ -43,10 +42,10 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrMsgNotFound
+		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return &msg, nil
@@ -81,7 +80,7 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -96,14 +95,14 @@ func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUI
 			&msg.Text,
 			&msg.CreatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+			return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 		}
 
 		messages = append(messages, msg)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return messages, nil
@@ -125,7 +124,7 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	defer tx.Rollback()
@@ -143,33 +142,31 @@ func (r *MessageRepository) CreateMessage(ctx context.Context, msg *model.Messag
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23503" {
 				switch pgErr.ConstraintName {
-				case "fk_messages_chat":
-					return errs.ErrChatNotFound
-				case "fk_messages_user":
-					return errs.ErrUserNotFound
+				case "fk_messages_chat", "fk_messages_user":
+					return repository.ErrNotFound
 				}
 			}
 		}
 
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	res, err := tx.ExecContext(ctx, chatQuery, msg.CreatedAt, msg.ChatID)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return errs.ErrChatNotFound
+		return repository.ErrNotFound
 	}
 
 	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return nil
@@ -186,16 +183,16 @@ func (r *MessageRepository) UpdateMessage(ctx context.Context, msg *model.Messag
 
 	res, err := r.db.ExecContext(ctx, query, msg.Text, msg.ID)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return errs.ErrMsgNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -210,10 +207,8 @@ func (r *MessageRepository) DeleteMessage(ctx context.Context, msgID uuid.UUID) 
 	slog.DebugContext(ctx, "deleting message in DB", "msgID", msgID)
 
 	if _, err := r.db.ExecContext(ctx, query, msgID); err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return nil
 }
-
-var _ repository.MessageRepository = (*MessageRepository)(nil)

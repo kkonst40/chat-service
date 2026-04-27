@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
 )
@@ -41,10 +40,10 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errs.ErrUserNotFound
+		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return &user, nil
@@ -61,7 +60,7 @@ func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) (
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -69,14 +68,14 @@ func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) (
 	for rows.Next() {
 		var userID uuid.UUID
 		if err := rows.Scan(&userID); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+			return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 		}
 
 		userIDs = append(userIDs, userID)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return userIDs, nil
@@ -93,7 +92,7 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 
 	rows, err := r.db.QueryContext(ctx, query, chatID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -105,14 +104,14 @@ func (r *UserRepository) GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]
 			&user.ChatID,
 			&user.Role,
 		); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+			return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 		}
 
 		users = append(users, user)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return users, nil
@@ -131,7 +130,7 @@ func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, user
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -140,14 +139,14 @@ func (r *UserRepository) GetPersonalChatsInterlocutors(ctx context.Context, user
 		var chatID uuid.UUID
 		var interlocutorID uuid.UUID
 		if err := rows.Scan(&chatID, &interlocutorID); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+			return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 		}
 
 		chatsInterlocutors[chatID] = interlocutorID
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return chatsInterlocutors, nil
@@ -174,10 +173,10 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == "23503" && pgErr.ConstraintName == "fk_users_chat" {
-				return nil, errs.ErrChatNotFound
+				return nil, repository.ErrNotFound
 			}
 		}
-		return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 	defer rows.Close()
 
@@ -185,7 +184,7 @@ func (r *UserRepository) AddChatUsers(ctx context.Context, chatID uuid.UUID, use
 	for rows.Next() {
 		var returnedID uuid.UUID
 		if err := rows.Scan(&returnedID); err != nil {
-			return nil, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+			return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 		}
 		insertedIDs = append(insertedIDs, returnedID)
 	}
@@ -202,7 +201,7 @@ func (r *UserRepository) DeleteChatUser(ctx context.Context, chatID uuid.UUID, u
 	slog.DebugContext(ctx, "deleting chat user in DB", "chatID", chatID, "userID", userID)
 
 	if _, err := r.db.ExecContext(ctx, query, userID, chatID); err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return nil
@@ -219,16 +218,16 @@ func (r *UserRepository) UpdateUserRole(ctx context.Context, chatID, userID uuid
 
 	res, err := r.db.ExecContext(ctx, query, newRole, userID, chatID)
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	if rowsAffected == 0 {
-		return errs.ErrUserNotFound
+		return repository.ErrNotFound
 	}
 
 	return nil
@@ -252,10 +251,8 @@ func (r *UserRepository) UserInChat(ctx context.Context, chatID, userID uuid.UUI
 	)
 
 	if err != nil {
-		return false, fmt.Errorf("%w: %w", errs.ErrDatabase, err)
+		return false, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
 	return exists, nil
 }
-
-var _ repository.UserRepository = (*UserRepository)(nil)
