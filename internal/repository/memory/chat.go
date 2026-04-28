@@ -20,16 +20,16 @@ func NewChatRepository(db *MemoryDB) *ChatRepository {
 	}
 }
 
-func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
+func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 
 	chat, ok := r.db.chats[chatID]
 	if !ok {
-		return nil, repository.ErrNotFound
+		return model.Chat{}, repository.ErrNotFound
 	}
 
-	return chat, nil
+	return *chat, nil
 }
 
 func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {

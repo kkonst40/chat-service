@@ -29,7 +29,7 @@ type UserLoginCache interface {
 }
 
 type UserRepository interface {
-	GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error)
+	GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (model.User, error)
 	GetChatUsers(ctx context.Context, chatID uuid.UUID) ([]model.User, error)
 	GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error)
 	GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error)
@@ -53,7 +53,7 @@ func NewUserService(
 	}
 }
 
-func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error) {
+func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (model.User, error) {
 	//??
 	return s.userRepository.GetChatUser(ctx, chatID, userID)
 }

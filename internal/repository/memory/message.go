@@ -20,16 +20,16 @@ func NewMessageRepository(db *MemoryDB) *MessageRepository {
 	}
 }
 
-func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*model.Message, error) {
+func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (model.Message, error) {
 	r.db.mu.Lock()
 	defer r.db.mu.Unlock()
 
 	message, ok := r.db.messages[msgID]
 	if !ok {
-		return nil, repository.ErrNotFound
+		return model.Message{}, repository.ErrNotFound
 	}
 
-	return message, nil
+	return *message, nil
 }
 
 func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64) ([]model.Message, error) {

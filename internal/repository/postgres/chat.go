@@ -21,7 +21,7 @@ func NewChatRepository(db *sql.DB) *ChatRepository {
 	}
 }
 
-func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
+func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat, error) {
 	const query = `
 		SELECT id, name, is_group, last_message_at
 		FROM chats
@@ -39,13 +39,13 @@ func (r *ChatRepository) GetChat(ctx context.Context, chatID uuid.UUID) (*model.
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, repository.ErrNotFound
+		return model.Chat{}, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
+		return model.Chat{}, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
-	return &chat, nil
+	return chat, nil
 }
 
 func (r *ChatRepository) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {

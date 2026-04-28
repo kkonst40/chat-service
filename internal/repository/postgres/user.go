@@ -23,7 +23,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	}
 }
 
-func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (*model.User, error) {
+func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (model.User, error) {
 	const query = `
 		SELECT id, chat_id, role
 		FROM users
@@ -40,13 +40,13 @@ func (r *UserRepository) GetChatUser(ctx context.Context, chatID, userID uuid.UU
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, repository.ErrNotFound
+		return model.User{}, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
+		return model.User{}, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {

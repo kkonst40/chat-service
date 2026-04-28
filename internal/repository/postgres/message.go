@@ -23,7 +23,7 @@ func NewMessageRepository(db *sql.DB) *MessageRepository {
 	}
 }
 
-func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*model.Message, error) {
+func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (model.Message, error) {
 	const query = `
 		SELECT id, user_id, chat_id, text, created_at
 		FROM messages
@@ -42,13 +42,13 @@ func (r *MessageRepository) GetMessage(ctx context.Context, msgID uuid.UUID) (*m
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, repository.ErrNotFound
+		return model.Message{}, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
+		return model.Message{}, fmt.Errorf("%w: %w", repository.ErrDatabase, err)
 	}
 
-	return &msg, nil
+	return msg, nil
 }
 
 func (r *MessageRepository) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64) ([]model.Message, error) {

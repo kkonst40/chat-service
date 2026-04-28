@@ -22,7 +22,7 @@ type ChatService struct {
 }
 
 type ChatRepository interface {
-	GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error)
+	GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat, error)
 	GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error)
 	CreateGroupChat(ctx context.Context, chat *model.Chat, creatorID uuid.UUID, userIDs []uuid.UUID) error
 	CreatePersonalChat(ctx context.Context, chat *model.Chat, userID1, userID2 uuid.UUID) error
@@ -46,15 +46,15 @@ func NewChatService(
 	return &service
 }
 
-func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (*model.Chat, error) {
+func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat, error) {
 	slog.DebugContext(ctx, "chatService.GetChat", "chatID", chatID)
 
 	chat, err := s.chatRepository.GetChat(ctx, chatID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, fmt.Errorf("%w: id %v", errs.ErrChatNotFound, chatID)
+			return model.Chat{}, fmt.Errorf("%w: id %v", errs.ErrChatNotFound, chatID)
 		}
-		return nil, fmt.Errorf("get chat %v: %w", chatID, err)
+		return model.Chat{}, fmt.Errorf("get chat %v: %w", chatID, err)
 	}
 	slog.DebugContext(ctx, "chat retrieved")
 

@@ -23,17 +23,17 @@ func NewUserRepository(db *MemoryDB) *UserRepository {
 	}
 }
 
-func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (*model.User, error) {
+func (r *UserRepository) GetChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (model.User, error) {
 	r.db.mu.RLock()
 	defer r.db.mu.RUnlock()
 
 	key := key{UserID: userID, ChatID: chatID}
 	user, ok := r.db.users[key]
 	if !ok {
-		return nil, repository.ErrNotFound
+		return model.User{}, repository.ErrNotFound
 	}
 
-	return user, nil
+	return *user, nil
 }
 
 func (r *UserRepository) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
