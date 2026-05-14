@@ -1,9 +1,5 @@
--- schema.sql
-
--- ===== Роли пользователей =====
 CREATE TYPE user_role AS ENUM ('common', 'admin', 'owner');
 
--- ===== Чаты =====
 CREATE TABLE chats (
     id              UUID PRIMARY KEY,
     name            TEXT NOT NULL,
@@ -11,7 +7,6 @@ CREATE TABLE chats (
     last_message_at TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- ===== Пользователи в чатах =====
 CREATE TABLE users (
     id      UUID NOT NULL,
     chat_id UUID NOT NULL,
@@ -25,7 +20,6 @@ CREATE TABLE users (
         ON DELETE CASCADE
 );
 
--- ===== Сообщения =====
 CREATE TABLE messages (
     id         UUID PRIMARY KEY,
     user_id    UUID NOT NULL,
@@ -44,7 +38,6 @@ CREATE TABLE messages (
         ON DELETE CASCADE
 );
 
--- ===== Индексы =====
 CREATE INDEX idx_users_chat_id ON users(chat_id);
 
 CREATE INDEX idx_messages_chat_id ON messages(chat_id);
