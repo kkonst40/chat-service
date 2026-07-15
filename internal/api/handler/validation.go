@@ -24,7 +24,7 @@ func NewValidator() *validator.Validate {
 	return v
 }
 
-func handleValidationErr(err error) error {
+func HandleValidationErr(err error) error {
 	var ve validator.ValidationErrors
 	if errors.As(err, &ve) {
 		fields := make([]string, 0, len(ve))

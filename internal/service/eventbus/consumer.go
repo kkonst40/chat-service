@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kkonst40/chat-service/internal/config"
-	"github.com/segmentio/kafka-go"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type UserLoginCache interface {
@@ -17,47 +18,68 @@ type UserLoginCache interface {
 }
 
 type Consumer struct {
-	reader     kafka.Reader
+	client     *kgo.Client
 	loginCache UserLoginCache
 	ctx        context.Context
 }
 
-func NewConsumer(cfg *config.Config, userLoginCache UserLoginCache) *Consumer {
-	return &Consumer{
-		reader: *kafka.NewReader(kafka.ReaderConfig{
-			Brokers:  []string{fmt.Sprintf("%s:%s", cfg.Kafka.Host, cfg.Kafka.Port)},
-			GroupID:  "iapp-consumer-group",
-			Topic:    topicUserEvents,
-			MinBytes: 10e3,
-			MaxBytes: 10e6,
-		}),
-		loginCache: userLoginCache,
+const (
+	topicConsumerGroup = "iapp-consumer-group"
+	topicUserEvents    = "user-events"
+)
+
+func NewConsumer(cfg *config.Config, userLoginCache UserLoginCache) (*Consumer, error) {
+	cl, err := kgo.NewClient(
+		kgo.SeedBrokers(fmt.Sprintf("%s:%s", cfg.Kafka.Host, cfg.Kafka.Port)),
+		kgo.ConsumerGroup(topicConsumerGroup),
+		kgo.ConsumeTopics(topicUserEvents),
+	)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Consumer{
+		client:     cl,
+		loginCache: userLoginCache,
+	}, nil
 }
 
-func (c *Consumer) Start(ctx context.Context) error {
+func (c *Consumer) Run(ctx context.Context) {
 	c.ctx = ctx
+	defer c.client.Close()
+
 	for {
-		msg, err := c.reader.ReadMessage(c.ctx)
-		if err != nil {
-			if c.ctx.Err() != nil {
-				return nil
+		fetches := c.client.PollFetches(ctx)
+		if errs := fetches.Errors(); len(errs) > 0 {
+			if ctx.Err() != nil {
+				break
 			}
-			return err
+			continue
 		}
 
-		c.handleMessage(msg.Value)
+		iter := fetches.RecordIter()
+		for !iter.Done() {
+			record := iter.Next()
+			slog.Debug("Kafka message", "partition", record.Partition, "key", string(record.Key), "value", string(record.Value))
+
+			err := c.handleMessage(record.Value)
+			if err != nil {
+				slog.Error("Handling message from Kafka", "key", string(record.Key), "error", err.Error())
+				continue
+			}
+
+			commitCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			c.client.CommitRecords(commitCtx, record)
+			cancel()
+		}
 	}
 }
 
-func (c *Consumer) Close() error {
-	return c.reader.Close()
-}
-
-func (c *Consumer) handleMessage(data []byte) {
+func (c *Consumer) handleMessage(data []byte) error {
 	var event eventMessage
 	if err := json.Unmarshal(data, &event); err != nil {
 		slog.Error("event message unmarshaling", "error", err.Error())
+		return err
 	}
 
 	switch event.Type {
@@ -67,9 +89,13 @@ func (c *Consumer) handleMessage(data []byte) {
 
 		if err := c.loginCache.SetUserLogins(c.ctx, map[uuid.UUID]string{p.UserID: p.Login}); err != nil {
 			slog.Error("user login cache SetUserLogins error", "error", err)
+			return err
 		}
 
 	default:
 		slog.Error("unknown event", "type", event.Type)
+		return fmt.Errorf("unknown event type")
 	}
+
+	return nil
 }

@@ -1,4 +1,4 @@
-package service
+package message
 
 import (
 	"context"
@@ -12,14 +12,13 @@ import (
 	"github.com/kkonst40/chat-service/internal/domain/event"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
-	"github.com/kkonst40/chat-service/internal/service/dispatcher"
 )
 
-type MessageService struct {
+type Service struct {
 	messageRepository MessageRepository
-	chatService       *ChatService
-	userService       *UserService
-	dispatcher        *dispatcher.Dispatcher
+	chatService       ChatService
+	userService       UserService
+	dispatcher        Dispatcher
 	textMaxLength     int
 }
 
@@ -31,14 +30,28 @@ type MessageRepository interface {
 	DeleteMessage(ctx context.Context, msgID uuid.UUID) error
 }
 
-func NewMessageService(
+type Dispatcher interface {
+	Publish(e event.Event, userIDs ...uuid.UUID)
+}
+
+type ChatService interface {
+	ChatExists(ctx context.Context, chatID uuid.UUID) bool
+}
+
+type UserService interface {
+	UserInChat(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) bool
+	GetChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID) (model.User, error)
+	GetUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
+}
+
+func New(
 	messageRepository MessageRepository,
-	chatService *ChatService,
-	userService *UserService,
-	dispatcher *dispatcher.Dispatcher,
+	chatService ChatService,
+	userService UserService,
+	dispatcher Dispatcher,
 	textMaxLength int,
-) *MessageService {
-	service := MessageService{
+) *Service {
+	service := Service{
 		messageRepository: messageRepository,
 		chatService:       chatService,
 		userService:       userService,
@@ -49,7 +62,7 @@ func NewMessageService(
 	return &service
 }
 
-func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64, requesterID uuid.UUID) ([]model.Message, error) {
+func (s *Service) GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64, requesterID uuid.UUID) ([]model.Message, error) {
 	slog.DebugContext(ctx, "messageService.GetChatMessages", "chatID", chatID)
 
 	if !s.chatService.ChatExists(ctx, chatID) {
@@ -59,7 +72,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 			chatID,
 		)
 	}
-	if !s.userService.userInChat(ctx, chatID, requesterID) {
+	if !s.userService.UserInChat(ctx, chatID, requesterID) {
 		return nil, fmt.Errorf(
 			"%w: user %v is not in chat %v",
 			errs.ErrForbidden,
@@ -79,7 +92,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 		userIDs = append(userIDs, messages[i].UserID)
 	}
 
-	logins, err := s.userService.getUserLogins(ctx, userIDs)
+	logins, err := s.userService.GetUserLogins(ctx, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get user logins: %w", err)
 	}
@@ -91,7 +104,7 @@ func (s *MessageService) GetChatMessages(ctx context.Context, chatID uuid.UUID, 
 	return messages, nil
 }
 
-func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {
+func (s *Service) CreateMessage(ctx context.Context, userID, chatID uuid.UUID, text string) (*model.Message, error) {
 	slog.DebugContext(ctx, "messageService.CreateMessage", "chatID", chatID)
 
 	newID, err := uuid.NewV7()
@@ -116,7 +129,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	}
 	slog.DebugContext(ctx, "message created")
 
-	nameMap, err := s.userService.getUserLogins(ctx, []uuid.UUID{userID})
+	nameMap, err := s.userService.GetUserLogins(ctx, []uuid.UUID{userID})
 	if err != nil {
 		return nil, fmt.Errorf("get user logins: %w", err)
 	}
@@ -136,7 +149,7 @@ func (s *MessageService) CreateMessage(ctx context.Context, userID, chatID uuid.
 	return msg, nil
 }
 
-func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, text string, requesterID uuid.UUID) error {
+func (s *Service) UpdateMessage(ctx context.Context, msgID uuid.UUID, text string, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "messageService.UpdateMessage", "msgID", msgID)
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
@@ -185,7 +198,7 @@ func (s *MessageService) UpdateMessage(ctx context.Context, msgID uuid.UUID, tex
 	return nil
 }
 
-func (s *MessageService) DeleteMessage(ctx context.Context, msgID uuid.UUID, requesterID uuid.UUID) error {
+func (s *Service) DeleteMessage(ctx context.Context, msgID uuid.UUID, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "messageService.DeleteMessage", "msgID", msgID)
 
 	msg, err := s.messageRepository.GetMessage(ctx, msgID)
