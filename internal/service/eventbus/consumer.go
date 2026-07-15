@@ -33,6 +33,7 @@ func NewConsumer(cfg *config.Config, userLoginCache UserLoginCache) (*Consumer, 
 		kgo.SeedBrokers(fmt.Sprintf("%s:%s", cfg.Kafka.Host, cfg.Kafka.Port)),
 		kgo.ConsumerGroup(topicConsumerGroup),
 		kgo.ConsumeTopics(topicUserEvents),
+		kgo.DisableAutoCommit(),
 	)
 	if err != nil {
 		return nil, err
