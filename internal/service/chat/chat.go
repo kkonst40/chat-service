@@ -1,4 +1,4 @@
-package service
+package chat
 
 import (
 	"context"
@@ -12,13 +12,12 @@ import (
 	"github.com/kkonst40/chat-service/internal/domain/event"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
-	"github.com/kkonst40/chat-service/internal/service/dispatcher"
 )
 
-type ChatService struct {
+type Service struct {
 	chatRepository ChatRepository
-	userService    *UserService
-	dispatcher     *dispatcher.Dispatcher
+	userService    UserService
+	dispatcher     Dispatcher
 }
 
 type ChatRepository interface {
@@ -32,12 +31,25 @@ type ChatRepository interface {
 	ChatExists(ctx context.Context, chatID uuid.UUID) (bool, error)
 }
 
-func NewChatService(
+type UserService interface {
+	GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error)
+	GetUserIDs(ctx context.Context, userLogins []string) (map[string]uuid.UUID, error)
+	GetUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
+	GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error)
+	AddChatUsers(ctx context.Context, chatID uuid.UUID, userNames []string, requesterID uuid.UUID) error
+	HasPermission(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID, role model.Role) bool
+}
+
+type Dispatcher interface {
+	Publish(e event.Event, userIDs ...uuid.UUID)
+}
+
+func New(
 	chatRepository ChatRepository,
-	userService *UserService,
-	dispatcher *dispatcher.Dispatcher,
-) *ChatService {
-	service := ChatService{
+	userService UserService,
+	dispatcher Dispatcher,
+) *Service {
+	service := Service{
 		chatRepository: chatRepository,
 		userService:    userService,
 		dispatcher:     dispatcher,
@@ -46,7 +58,7 @@ func NewChatService(
 	return &service
 }
 
-func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat, error) {
+func (s *Service) GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat, error) {
 	slog.DebugContext(ctx, "chatService.GetChat", "chatID", chatID)
 
 	chat, err := s.chatRepository.GetChat(ctx, chatID)
@@ -61,7 +73,7 @@ func (s *ChatService) GetChat(ctx context.Context, chatID uuid.UUID) (model.Chat
 	return chat, nil
 }
 
-func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {
+func (s *Service) GetUserChats(ctx context.Context, userID uuid.UUID, filter model.ChatFilter) ([]model.Chat, error) {
 	slog.DebugContext(ctx, "chatService.GetUserChats")
 
 	chats, err := s.chatRepository.GetUserChats(ctx, userID, filter)
@@ -74,7 +86,7 @@ func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter
 		return chats, nil
 	}
 
-	chatsInterlocutors, err := s.userService.getPersonalChatsInterlocutors(ctx, userID)
+	chatsInterlocutors, err := s.userService.GetPersonalChatsInterlocutors(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
 	}
@@ -84,7 +96,7 @@ func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter
 		userIDs = append(userIDs, interlocutorID)
 	}
 
-	logins, err := s.userService.getUserLogins(ctx, userIDs)
+	logins, err := s.userService.GetUserLogins(ctx, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get user %v chats: %w", userID, err)
 	}
@@ -98,24 +110,24 @@ func (s *ChatService) GetUserChats(ctx context.Context, userID uuid.UUID, filter
 	return chats, nil
 }
 
-func (s *ChatService) CreateGroupChat(ctx context.Context, name string, userNames []string, requesterID uuid.UUID) (*model.Chat, error) {
+func (s *Service) CreateGroupChat(ctx context.Context, name string, userNames []string, requesterID uuid.UUID) (model.Chat, error) {
 	slog.DebugContext(ctx, "chatService.CreateChat")
 
 	newID, err := uuid.NewV7()
 	if err != nil {
-		return nil, fmt.Errorf("%w: generating uuid: %w", errs.ErrInternal, err)
+		return model.Chat{}, fmt.Errorf("%w: generating uuid: %w", errs.ErrInternal, err)
 	}
 
-	chat := &model.Chat{
+	chat := model.Chat{
 		ID:            newID,
 		Name:          name,
 		IsGroup:       true,
 		LastMessageAt: time.Now(),
 	}
 
-	userIDsMap, err := s.userService.getUserIDs(ctx, userNames)
+	userIDsMap, err := s.userService.GetUserIDs(ctx, userNames)
 	if err != nil {
-		return nil, fmt.Errorf("get user IDs before create chat: %w", err)
+		return model.Chat{}, fmt.Errorf("get user IDs before create chat: %w", err)
 	}
 
 	userIDs := make([]uuid.UUID, 0, len(userIDsMap))
@@ -126,15 +138,15 @@ func (s *ChatService) CreateGroupChat(ctx context.Context, name string, userName
 		}
 	}
 
-	err = s.chatRepository.CreateGroupChat(ctx, chat, requesterID, userIDs)
+	err = s.chatRepository.CreateGroupChat(ctx, &chat, requesterID, userIDs)
 	if err != nil {
-		return nil, fmt.Errorf("create chat: %w", err)
+		return model.Chat{}, fmt.Errorf("create chat: %w", err)
 	}
 	slog.DebugContext(ctx, "chat created")
 
 	err = s.userService.AddChatUsers(ctx, chat.ID, userNames, requesterID)
 	if err != nil {
-		return nil, fmt.Errorf("add users to new chat: %w", err)
+		return model.Chat{}, fmt.Errorf("add users to new chat: %w", err)
 	}
 	slog.DebugContext(ctx, "chat users added")
 
@@ -149,34 +161,34 @@ func (s *ChatService) CreateGroupChat(ctx context.Context, name string, userName
 	return chat, nil
 }
 
-func (s *ChatService) CreatePersonalChat(ctx context.Context, userID1 uuid.UUID, userName2 string) (*model.Chat, error) {
+func (s *Service) CreatePersonalChat(ctx context.Context, userID1 uuid.UUID, userName2 string) (model.Chat, error) {
 	slog.DebugContext(ctx, "chatService.CreatePersonalChat", "user1", userID1, "user2", userName2)
 
 	newID, err := uuid.NewV7()
 	if err != nil {
-		return nil, fmt.Errorf("%w: generating uuid: %w", errs.ErrInternal, err)
+		return model.Chat{}, fmt.Errorf("%w: generating uuid: %w", errs.ErrInternal, err)
 	}
 
-	chat := &model.Chat{
+	chat := model.Chat{
 		ID:            newID,
 		Name:          "",
 		IsGroup:       false,
 		LastMessageAt: time.Now(),
 	}
 
-	idMap, err := s.userService.getUserIDs(ctx, []string{userName2})
+	idMap, err := s.userService.GetUserIDs(ctx, []string{userName2})
 	if err != nil {
-		return nil, fmt.Errorf("create personal chat: %w", err)
+		return model.Chat{}, fmt.Errorf("create personal chat: %w", err)
 	}
 
 	userID2, ok := idMap[userName2]
 	if !ok {
-		return nil, fmt.Errorf("%w: user name '%s'", errs.ErrUserNotFound, userName2)
+		return model.Chat{}, fmt.Errorf("%w: user name '%s'", errs.ErrUserNotFound, userName2)
 	}
 
-	err = s.chatRepository.CreatePersonalChat(ctx, chat, userID1, userID2)
+	err = s.chatRepository.CreatePersonalChat(ctx, &chat, userID1, userID2)
 	if err != nil {
-		return nil, fmt.Errorf("create personal chat: %w", err)
+		return model.Chat{}, fmt.Errorf("create personal chat: %w", err)
 	}
 	slog.DebugContext(ctx, "personal chat created")
 
@@ -191,10 +203,10 @@ func (s *ChatService) CreatePersonalChat(ctx context.Context, userID1 uuid.UUID,
 	return chat, nil
 }
 
-func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
+func (s *Service) UpdateChatName(ctx context.Context, chatID uuid.UUID, name string, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "chatService.UpdateChatName", "chatID", chatID)
 
-	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Admin) {
+	if !s.userService.HasPermission(ctx, chatID, requesterID, model.Admin) {
 		return fmt.Errorf(
 			"%w: user %v has no permission to update chat %v name",
 			errs.ErrForbidden,
@@ -223,10 +235,10 @@ func (s *ChatService) UpdateChatName(ctx context.Context, chatID uuid.UUID, name
 	return nil
 }
 
-func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) error {
+func (s *Service) DeleteChat(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "chatService.DeleteChat", "chatID", chatID)
 
-	if !s.userService.hasPermission(ctx, chatID, requesterID, model.Owner) {
+	if !s.userService.HasPermission(ctx, chatID, requesterID, model.Owner) {
 		return fmt.Errorf(
 			"%w: user %v has no permission to delete chat %v",
 			errs.ErrForbidden,
@@ -255,7 +267,7 @@ func (s *ChatService) DeleteChat(ctx context.Context, chatID uuid.UUID, requeste
 	return nil
 }
 
-func (s *ChatService) ChatExists(ctx context.Context, chatID uuid.UUID) bool {
+func (s *Service) ChatExists(ctx context.Context, chatID uuid.UUID) bool {
 	exists, err := s.chatRepository.ChatExists(ctx, chatID)
 	if err != nil {
 		return false

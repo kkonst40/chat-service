@@ -8,25 +8,30 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/kkonst40/chat-service/internal/api"
 	"github.com/kkonst40/chat-service/internal/api/handler"
+	chathandler "github.com/kkonst40/chat-service/internal/api/handler/chat"
+	messagehandler "github.com/kkonst40/chat-service/internal/api/handler/message"
+	userhandler "github.com/kkonst40/chat-service/internal/api/handler/user"
+	wshandler "github.com/kkonst40/chat-service/internal/api/handler/ws"
 	"github.com/kkonst40/chat-service/internal/api/limit/conntracker"
 	"github.com/kkonst40/chat-service/internal/api/limit/ratelimiter"
 	"github.com/kkonst40/chat-service/internal/config"
 	pb "github.com/kkonst40/chat-service/internal/gen/user"
 	"github.com/kkonst40/chat-service/internal/hub"
 	"github.com/kkonst40/chat-service/internal/repository/postgres"
-	"github.com/kkonst40/chat-service/internal/service"
 	"github.com/kkonst40/chat-service/internal/service/auth"
 	"github.com/kkonst40/chat-service/internal/service/cache"
+	chatservice "github.com/kkonst40/chat-service/internal/service/chat"
 	"github.com/kkonst40/chat-service/internal/service/dispatcher"
 	"github.com/kkonst40/chat-service/internal/service/eventbus"
 	"github.com/kkonst40/chat-service/internal/service/integration/sso"
+	messageservice "github.com/kkonst40/chat-service/internal/service/message"
+	userservice "github.com/kkonst40/chat-service/internal/service/user"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type App struct {
@@ -72,23 +77,23 @@ func New(cfg *config.Config) (*App, error) {
 		tokenValidator = auth.NewTokenValidator(cfg)
 		rateLimiter    = ratelimiter.New(cfg)
 		connTracker    = conntracker.New(cfg.WSConnsPerIP)
-
-		eventConsumer = eventbus.NewConsumer(cfg, userLoginCache)
 	)
 
+	eventConsumer, err := eventbus.NewConsumer(cfg, userLoginCache)
+
 	var (
-		userService    = service.NewUserService(userRepo, dispatcher, ssoClient, userLoginCache)
-		chatService    = service.NewChatService(chatRepo, userService, dispatcher)
-		messageService = service.NewMessageService(messageRepo, chatService, userService, dispatcher, 4096)
+		userService    = userservice.New(userRepo, dispatcher, ssoClient, userLoginCache)
+		chatService    = chatservice.New(chatRepo, userService, dispatcher)
+		messageService = messageservice.New(messageRepo, chatService, userService, dispatcher, 4096)
 	)
 	slog.Info("Services are initialized")
 
 	var (
 		validator      = handler.NewValidator()
-		userHandler    = handler.NewUserHandler(userService, validator)
-		chatHandler    = handler.NewChatHandler(chatService, validator)
-		messageHandler = handler.NewMessageHandler(messageService, validator)
-		wsHandler      = handler.NewWSHandler(wsHub, connTracker)
+		userHandler    = userhandler.New(userService, validator)
+		chatHandler    = chathandler.New(chatService, validator)
+		messageHandler = messagehandler.New(messageService, validator)
+		wsHandler      = wshandler.New(wsHub, connTracker)
 	)
 	slog.Info("Handlers are initialized")
 
@@ -117,30 +122,18 @@ func New(cfg *config.Config) (*App, error) {
 }
 
 func (a *App) Run(ctx context.Context) error {
-	errChan := make(chan error, 2)
+	go a.eventConsumer.Run(ctx)
 
-	go func() {
-		if err := a.eventConsumer.Start(ctx); err != nil {
-			errChan <- fmt.Errorf("Event bus consumer error: %w", err)
-		}
-	}()
+	if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("HTTP serve error: %w", err)
+	}
 
-	go func() {
-		if err := a.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errChan <- fmt.Errorf("HTTP serve error: %w", err)
-		}
-	}()
-
-	return <-errChan
+	return nil
 }
 
 func (a *App) Shutdown(ctx context.Context) {
 	if err := a.server.Shutdown(ctx); err != nil {
 		slog.Error("Server forced to shutdown", "error", err.Error())
-	}
-
-	if err := a.eventConsumer.Close(); err != nil {
-		slog.Error("Event consumer close error", "error", err.Error())
 	}
 
 	if err := a.db.Close(); err != nil {

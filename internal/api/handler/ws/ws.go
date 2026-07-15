@@ -1,4 +1,4 @@
-package handler
+package ws
 
 import (
 	"fmt"
@@ -8,19 +8,20 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/kkonst40/chat-service/internal/api/handler"
 	"github.com/kkonst40/chat-service/internal/api/limit/conntracker"
 	errs "github.com/kkonst40/chat-service/internal/domain/errors"
 	"github.com/kkonst40/chat-service/internal/hub"
 	"github.com/kkonst40/chat-service/internal/service/auth"
 )
 
-type WSHandler struct {
+type Handler struct {
 	hub         *hub.Hub
 	connTracker *conntracker.ConnTracker
 }
 
-func NewWSHandler(hub *hub.Hub, connTracker *conntracker.ConnTracker) *WSHandler {
-	return &WSHandler{
+func New(hub *hub.Hub, connTracker *conntracker.ConnTracker) *Handler {
+	return &Handler{
 		hub:         hub,
 		connTracker: connTracker,
 	}
@@ -48,14 +49,14 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func (h *WSHandler) HandleConnection(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
 
-	clientIP := GetRealIP(r)
+	clientIP := handler.GetRealIP(r)
 
 	if !h.connTracker.Acquire(clientIP) {
-		WriteError(ctx, w, fmt.Errorf("%w: from IP %s", errs.ErrTooManyOpenConnections, clientIP))
+		handler.WriteError(ctx, w, fmt.Errorf("%w: from IP %s", errs.ErrTooManyOpenConnections, clientIP))
 		return
 	}
 	defer h.connTracker.Release(clientIP)

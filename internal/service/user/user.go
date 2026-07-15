@@ -1,4 +1,4 @@
-package service
+package user
 
 import (
 	"context"
@@ -12,13 +12,12 @@ import (
 	"github.com/kkonst40/chat-service/internal/domain/event"
 	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/repository"
-	"github.com/kkonst40/chat-service/internal/service/dispatcher"
 	"github.com/kkonst40/chat-service/internal/service/integration/sso"
 )
 
-type UserService struct {
+type Service struct {
 	userRepository UserRepository
-	dispatcher     *dispatcher.Dispatcher
+	dispatcher     Dispatcher
 	ssoClient      *sso.Service
 	loginCache     UserLoginCache
 }
@@ -39,13 +38,17 @@ type UserRepository interface {
 	UserInChat(ctx context.Context, chatID, userID uuid.UUID) (bool, error)
 }
 
-func NewUserService(
+type Dispatcher interface {
+	Publish(e event.Event, userIDs ...uuid.UUID)
+}
+
+func New(
 	userRepository UserRepository,
-	dispatcher *dispatcher.Dispatcher,
+	dispatcher Dispatcher,
 	ssoClient *sso.Service,
 	loginCache UserLoginCache,
-) *UserService {
-	return &UserService{
+) *Service {
+	return &Service{
 		userRepository: userRepository,
 		dispatcher:     dispatcher,
 		ssoClient:      ssoClient,
@@ -53,15 +56,15 @@ func NewUserService(
 	}
 }
 
-func (s *UserService) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (model.User, error) {
+func (s *Service) GetChatUser(ctx context.Context, chatID, userID uuid.UUID) (model.User, error) {
 	//??
 	return s.userRepository.GetChatUser(ctx, chatID, userID)
 }
 
-func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]model.User, error) {
+func (s *Service) GetChatUsers(ctx context.Context, chatID uuid.UUID, requesterID uuid.UUID) ([]model.User, error) {
 	slog.DebugContext(ctx, "userService.GetChatUsers", "chatID", chatID)
 
-	if !s.userInChat(ctx, chatID, requesterID) {
+	if !s.UserInChat(ctx, chatID, requesterID) {
 		return nil, fmt.Errorf(
 			"%w: user %v is not in chat %v",
 			errs.ErrForbidden,
@@ -79,7 +82,7 @@ func (s *UserService) GetChatUsers(ctx context.Context, chatID uuid.UUID, reques
 	return user, nil
 }
 
-func (s *UserService) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
+func (s *Service) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]uuid.UUID, error) {
 	slog.DebugContext(ctx, "userService.GetChatUserIDs", "chatID", chatID)
 
 	userIDs, err := s.userRepository.GetChatUserIDs(ctx, chatID)
@@ -91,10 +94,10 @@ func (s *UserService) GetChatUserIDs(ctx context.Context, chatID uuid.UUID) ([]u
 	return userIDs, nil
 }
 
-func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNames []string, requesterID uuid.UUID) error {
+func (s *Service) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNames []string, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "userService.AddChatUsers", "chatID", chatID)
 
-	if !s.userInChat(ctx, chatID, requesterID) {
+	if !s.UserInChat(ctx, chatID, requesterID) {
 		return fmt.Errorf(
 			"%w: user %v is not in chat %v",
 			errs.ErrForbidden,
@@ -103,7 +106,7 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 		)
 	}
 
-	userIDsMap, err := s.getUserIDs(ctx, userNames)
+	userIDsMap, err := s.GetUserIDs(ctx, userNames)
 	if err != nil {
 		return fmt.Errorf("get user IDs before add to chat %v: %w", chatID, err)
 	}
@@ -125,7 +128,7 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 	}
 	slog.DebugContext(ctx, "chat users added")
 
-	userNamesMap, err := s.getUserLogins(ctx, append(addedUserIDs, requesterID))
+	userNamesMap, err := s.GetUserLogins(ctx, append(addedUserIDs, requesterID))
 	if err != nil {
 		return fmt.Errorf("get added to chat %v user names to publish event: %w", chatID, err)
 	}
@@ -146,7 +149,7 @@ func (s *UserService) AddChatUsers(ctx context.Context, chatID uuid.UUID, userNa
 	return nil
 }
 
-func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID, requesterID uuid.UUID) error {
+func (s *Service) DeleteChatUser(ctx context.Context, chatID uuid.UUID, userID uuid.UUID, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "userService.DeleteChatUser", "chatID", chatID)
 
 	if userID == requesterID {
@@ -156,7 +159,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 		}
 		slog.DebugContext(ctx, "user deleted")
 
-		nameMap, err := s.getUserLogins(ctx, []uuid.UUID{requesterID})
+		nameMap, err := s.GetUserLogins(ctx, []uuid.UUID{requesterID})
 		if err != nil {
 			return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 		}
@@ -212,7 +215,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 	}
 	slog.DebugContext(ctx, "user deleted")
 
-	nameMap, err := s.getUserLogins(ctx, []uuid.UUID{requesterID, userID})
+	nameMap, err := s.GetUserLogins(ctx, []uuid.UUID{requesterID, userID})
 	if err != nil {
 		return fmt.Errorf("delete user %v from chat %v: %w", userID, chatID, err)
 	}
@@ -231,7 +234,7 @@ func (s *UserService) DeleteChatUser(ctx context.Context, chatID uuid.UUID, user
 	return nil
 }
 
-func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role, requesterID uuid.UUID) error {
+func (s *Service) UpdateUserRole(ctx context.Context, chatID, userID uuid.UUID, newRole model.Role, requesterID uuid.UUID) error {
 	slog.DebugContext(ctx, "userService.UpdateUserRole", "chatID", chatID, "chatUserID", userID, "role", newRole)
 
 	user, err := s.userRepository.GetChatUser(ctx, chatID, userID)
@@ -276,7 +279,7 @@ func (s *UserService) UpdateUserRole(ctx context.Context, chatID, userID uuid.UU
 	return nil
 }
 
-func (s *UserService) hasPermission(ctx context.Context, chatID, requesterID uuid.UUID, role model.Role) bool {
+func (s *Service) HasPermission(ctx context.Context, chatID, requesterID uuid.UUID, role model.Role) bool {
 	requester, err := s.GetChatUser(ctx, chatID, requesterID)
 	if err != nil {
 		return false
@@ -289,7 +292,7 @@ func (s *UserService) hasPermission(ctx context.Context, chatID, requesterID uui
 	return true
 }
 
-func (s *UserService) userInChat(ctx context.Context, chatID, userID uuid.UUID) bool {
+func (s *Service) UserInChat(ctx context.Context, chatID, userID uuid.UUID) bool {
 	result, err := s.userRepository.UserInChat(ctx, chatID, userID)
 	if err != nil {
 		return false
@@ -298,7 +301,7 @@ func (s *UserService) userInChat(ctx context.Context, chatID, userID uuid.UUID) 
 	return result
 }
 
-func (s *UserService) getPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
+func (s *Service) GetPersonalChatsInterlocutors(ctx context.Context, userID uuid.UUID) (map[uuid.UUID]uuid.UUID, error) {
 	chatsInterlocutors, err := s.userRepository.GetPersonalChatsInterlocutors(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get personal chats interlocutors IDs of user %v: %w", userID, err)
@@ -307,7 +310,7 @@ func (s *UserService) getPersonalChatsInterlocutors(ctx context.Context, userID 
 	return chatsInterlocutors, nil
 }
 
-func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
+func (s *Service) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uuid.UUID, error) {
 	IDs, err := s.ssoClient.ExistMany(ctx, userIDs)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -320,7 +323,7 @@ func (s *UserService) existMany(ctx context.Context, userIDs []uuid.UUID) ([]uui
 	return IDs, nil
 }
 
-func (s *UserService) getUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
+func (s *Service) GetUserLogins(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
 	userIDs = unique(userIDs)
 	result := make(map[uuid.UUID]string, len(userIDs))
 
@@ -376,7 +379,7 @@ func (s *UserService) getUserLogins(ctx context.Context, userIDs []uuid.UUID) (m
 	return result, nil
 }
 
-func (s *UserService) getUserIDs(ctx context.Context, userLogins []string) (map[string]uuid.UUID, error) {
+func (s *Service) GetUserIDs(ctx context.Context, userLogins []string) (map[string]uuid.UUID, error) {
 	userLogins = unique(userLogins)
 	result := make(map[string]uuid.UUID, len(userLogins))
 

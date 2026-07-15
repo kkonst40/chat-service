@@ -1,6 +1,7 @@
-package handler
+package message
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -9,18 +10,26 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/kkonst40/chat-service/internal/api/dto"
+	"github.com/kkonst40/chat-service/internal/api/handler"
 	errs "github.com/kkonst40/chat-service/internal/domain/errors"
-	"github.com/kkonst40/chat-service/internal/service"
+	"github.com/kkonst40/chat-service/internal/domain/model"
 	"github.com/kkonst40/chat-service/internal/service/auth"
 )
 
-type MessageHandler struct {
-	messageService *service.MessageService
+type Handler struct {
+	messageService MessageService
 	validate       *validator.Validate
 }
 
-func NewMessageHandler(newMessageService *service.MessageService, validate *validator.Validate) *MessageHandler {
-	return &MessageHandler{
+type MessageService interface {
+	GetChatMessages(ctx context.Context, chatID uuid.UUID, from uuid.UUID, count int64, requesterID uuid.UUID) ([]model.Message, error)
+	CreateMessage(ctx context.Context, userID uuid.UUID, chatID uuid.UUID, text string) (*model.Message, error)
+	UpdateMessage(ctx context.Context, msgID uuid.UUID, text string, requesterID uuid.UUID) error
+	DeleteMessage(ctx context.Context, msgID uuid.UUID, requesterID uuid.UUID) error
+}
+
+func New(newMessageService MessageService, validate *validator.Validate) *Handler {
+	return &Handler{
 		messageService: newMessageService,
 		validate:       validate,
 	}
@@ -33,7 +42,7 @@ const (
 	maxCount     int64 = 100
 )
 
-func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetChatMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
 
@@ -44,7 +53,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
+		handler.WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
@@ -64,7 +73,7 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 
 	messages, err := h.messageService.GetChatMessages(ctx, chatID, from, count, requesterID)
 	if err != nil {
-		WriteError(ctx, w, err)
+		handler.WriteError(ctx, w, err)
 		return
 	}
 
@@ -85,69 +94,69 @@ func (h *MessageHandler) GetChatMessages(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	WriteJSON(ctx, w, http.StatusOK, resp)
+	handler.WriteJSON(ctx, w, http.StatusOK, resp)
 }
 
-func (h *MessageHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
 
 	chatID, err := uuid.Parse(r.PathValue("chatId"))
 	if err != nil {
-		WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
+		handler.WriteError(ctx, w, fmt.Errorf("%w: chat ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	var req dto.CreateMessageRequest
-	if err := bindJSON(r, &req, h.validate); err != nil {
-		WriteError(ctx, w, err)
+	if err := handler.BindJSON(r, &req, h.validate); err != nil {
+		handler.WriteError(ctx, w, err)
 		return
 	}
 
 	if _, err := h.messageService.CreateMessage(ctx, requesterID, chatID, req.Text); err != nil {
-		WriteError(ctx, w, err)
+		handler.WriteError(ctx, w, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
 
 	msgID, err := uuid.Parse(r.PathValue("msgId"))
 	if err != nil {
-		WriteError(ctx, w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest))
+		handler.WriteError(ctx, w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	var req dto.UpdateMessageRequest
-	if err := bindJSON(r, &req, h.validate); err != nil {
-		WriteError(ctx, w, err)
+	if err := handler.BindJSON(r, &req, h.validate); err != nil {
+		handler.WriteError(ctx, w, err)
 		return
 	}
 
 	if err := h.messageService.UpdateMessage(ctx, msgID, req.Text, requesterID); err != nil {
-		WriteError(ctx, w, err)
+		handler.WriteError(ctx, w, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *MessageHandler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requesterID := auth.GetUserID(ctx)
 
 	msgID, err := uuid.Parse(r.PathValue("msgId"))
 	if err != nil {
-		WriteError(ctx, w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest))
+		handler.WriteError(ctx, w, fmt.Errorf("%w: message ID format", errs.ErrInvalidRequest))
 		return
 	}
 
 	if err := h.messageService.DeleteMessage(ctx, msgID, requesterID); err != nil {
-		WriteError(ctx, w, err)
+		handler.WriteError(ctx, w, err)
 		return
 	}
 

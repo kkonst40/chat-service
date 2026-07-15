@@ -46,7 +46,7 @@ func GetRealIP(r *http.Request) string {
 	return ip
 }
 
-func bindJSON(r *http.Request, dst any, validate *validator.Validate) error {
+func BindJSON(r *http.Request, dst any, validate *validator.Validate) error {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 

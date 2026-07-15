@@ -4,7 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kkonst40/chat-service/internal/api/handler"
+	chathandler "github.com/kkonst40/chat-service/internal/api/handler/chat"
+	messagehandler "github.com/kkonst40/chat-service/internal/api/handler/message"
+	userhandler "github.com/kkonst40/chat-service/internal/api/handler/user"
+	wshandler "github.com/kkonst40/chat-service/internal/api/handler/ws"
 	"github.com/kkonst40/chat-service/internal/api/limit/ratelimiter"
 	"github.com/kkonst40/chat-service/internal/api/middleware"
 	"github.com/kkonst40/chat-service/internal/config"
@@ -12,10 +15,10 @@ import (
 )
 
 func NewRouter(
-	chatHandler *handler.ChatHandler,
-	userHandler *handler.UserHandler,
-	messageHandler *handler.MessageHandler,
-	wsHandler *handler.WSHandler,
+	chatHandler *chathandler.Handler,
+	userHandler *userhandler.Handler,
+	messageHandler *messagehandler.Handler,
+	wsHandler *wshandler.Handler,
 	tokenValidator *auth.TokenValidator,
 	rateLimiter *ratelimiter.IPRateLimiter,
 	cfg *config.Config,
